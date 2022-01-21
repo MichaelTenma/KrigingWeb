@@ -2,7 +2,6 @@ package com.example.krigingweb.Entity.RowMapper;
 
 import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.GeoUtil;
-import lombok.SneakyThrows;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.io.ParseException;
 import org.springframework.jdbc.core.RowMapper;

@@ -1,24 +1,19 @@
 package com.example.krigingweb.Controller;
 
 import com.example.krigingweb.Service.SamplePointService;
-import jsat.classifiers.DataPoint;
 import jsat.classifiers.DataPointPair;
-import jsat.linear.DenseVector;
-import jsat.linear.Vec;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Controller
@@ -62,7 +57,7 @@ public class KrigingController {
     }
 
 
-    private OrdinaryKriging ordinaryKriging = new OrdinaryKriging();
+    private final OrdinaryKriging ordinaryKriging = new OrdinaryKriging();
     private RegressionDataSet testRegressionDataSet = null;
     @GetMapping("/train")
     public String train(){
@@ -71,7 +66,7 @@ public class KrigingController {
         this.testRegressionDataSet = regressionDataSetArray[1];
 
 //        OrdinaryKriging ordinaryKriging = new OrdinaryKriging();
-        ordinaryKriging.train(
+        this.ordinaryKriging.train(
             trainRegressionDataSet, Executors.newFixedThreadPool(7)
         );
         System.out.println("success");
