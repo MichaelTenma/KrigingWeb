@@ -1,15 +1,15 @@
 package com.example.krigingweb.Controller;
 
+import com.example.krigingweb.Interpolation.Kriging.Variogram.Log10Variogram;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.SemiCloud;
+import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
 import com.example.krigingweb.Service.SamplePointService;
 import jsat.classifiers.DataPointPair;
 import jsat.linear.DenseVector;
 import jsat.linear.Vec;
 import jsat.math.Function;
 import jsat.math.FunctionVec;
-import jsat.math.optimization.BacktrackingArmijoLineSearch;
-import jsat.math.optimization.LBFGS;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 import org.locationtech.jts.geom.*;
@@ -74,31 +74,33 @@ public class KrigingController {
         RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
         this.testRegressionDataSet = regressionDataSetArray[1];
 
-        SemiCloud semiCloud = new SemiCloud(trainRegressionDataSet, 200, 30000, new SphericalVariogram());
+        SemiCloud semiCloud = new SemiCloud(trainRegressionDataSet, 200, 8000, new Log10Variogram());
+        VariogramPredictor variogramPredictor = semiCloud.OLS();
+        double range = variogramPredictor.getRange();
+        double partialSill = variogramPredictor.getPartialSill();
+        double nugget = variogramPredictor.getNugget();
 
-//        SphericalTrainner sphericalTrainner = new SphericalTrainner(trainRegressionDataSet);
-
-        LBFGS lbfgs = new LBFGS(50, 10000, new BacktrackingArmijoLineSearch());
-        Function f = new Function() {
-            @Override
-            public double f(double... x) {
-                return this.f(DenseVector.toDenseVec(x));
-            }
-
-            @Override
-            public double f(Vec x) {
-                return semiCloud.loss(x.get(0), x.get(1), x.get(2));
-            }
-        };
-
-        FunctionVec fp = this.forwardDifference(f);
-        Vec w = new DenseVector(3);
-        Vec x0 = new DenseVector(new double[]{semiCloud.getInitRange(), 49, 81});
-        lbfgs.optimize(0.000001, w, x0, f, fp, null);
-
-        double range = w.get(0);
-        double partialSill = w.get(1);
-        double nugget = w.get(2);
+//        LBFGS lbfgs = new LBFGS(50, 10000, new BacktrackingArmijoLineSearch());
+//        Function f = new Function() {
+//            @Override
+//            public double f(double... x) {
+//                return this.f(DenseVector.toDenseVec(x));
+//            }
+//
+//            @Override
+//            public double f(Vec x) {
+//                return semiCloud.loss(x.get(0), x.get(1), x.get(2));
+//            }
+//        };
+//
+//        FunctionVec fp = this.forwardDifference(f);
+//        Vec w = new DenseVector(3);
+//        Vec x0 = new DenseVector(new double[]{semiCloud.getInitRange(), 49, 81});
+//        lbfgs.optimize(0.000001, w, x0, f, fp, null);
+//
+//        double range = w.get(0);
+//        double partialSill = w.get(1);
+//        double nugget = w.get(2);
 
         System.out.println(String.format("range = %f; partialSill = %f; nugget = %f\n", range, partialSill, nugget));
 

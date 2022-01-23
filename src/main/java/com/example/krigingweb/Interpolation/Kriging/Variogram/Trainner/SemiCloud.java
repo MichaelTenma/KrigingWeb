@@ -12,7 +12,7 @@ public class SemiCloud {
     private double[] semiArray;
     private double[] distanceArray;
 
-    private double initRange;
+//    private double initRange;
     private final double lag;
     private final double lagDistance;/* 滞后距离 */
 
@@ -24,7 +24,7 @@ public class SemiCloud {
         this.variogramPredictor = variogramPredictor;
 
         this.semiVariogram();
-        this.initRange = this.calInitRange();
+//        this.initRange = this.calInitRange();
     }
 
     private void semiVariogram(){
@@ -75,24 +75,7 @@ public class SemiCloud {
         this.semiArray = grouperResult.semiArray;
     }
 
-    private double calInitRange(){
-        double predictSill = 0;
-        for(double kk : this.semiArray){
-            predictSill += kk;
-        }
-        predictSill /= this.semiArray.length;
-        System.out.println("predictSill: " + predictSill);
-
-        DenseMatrix A = new DenseMatrix(this.semiArray.length, 2);
-        DenseVector semiVec = new DenseVector(this.semiArray.length);
-        for(int i = 0; i < this.distanceArray.length;i++){
-            double h = this.distanceArray[i];
-            double semi = this.semiArray[i];
-
-            A.updateRow(i, 1, DenseVector.toDenseVec(Math.log(h+1), 1));
-            semiVec.set(i, semi);
-        }
-
+    public VariogramPredictor OLS(){
         {
             List<Double> testList = new ArrayList<>(this.distanceArray.length);
             for(double dis : this.distanceArray){
@@ -109,35 +92,50 @@ public class SemiCloud {
             System.out.println();
         }
 
-        /**
-         * 对数模型的最小二乘解有问题
-         *
-         * AX = Y
-         * A'AX = A'Y
-         * 最小二乘解：X = inv(A'A)A'Y
-         */
-        DenseMatrix AT = A.transpose();
-        Matrix ATA = AT.multiply(A);
-        Vec ATY = AT.multiply(semiVec);
-        LUPDecomposition lup = new LUPDecomposition(ATA);
-
-        Vec X = lup.solve(ATY);
-        if(Double.isNaN(lup.det()) || Math.abs(lup.det()) < 1e-5) {
-            SingularValueDecomposition svd = new SingularValueDecomposition(ATA);
-            X = svd.solve(ATY);
-        }
-
-        double b = X.get(0);
-        double c = X.get(1);
-
-        double range = -1 + Math.pow(2, (predictSill - c) / b);
-        System.out.println(String.format("range = %f; b = %f, c= %f;", range, b, c));
-        return range;
+        this.variogramPredictor.OLS(this.distanceArray, this.semiArray);
+        return this.variogramPredictor;
     }
 
-    public double getInitRange() {
-        return initRange;
-    }
+//    private double calInitRange(){
+//        {
+//            List<Double> testList = new ArrayList<>(this.distanceArray.length);
+//            for(double dis : this.distanceArray){
+//                testList.add(dis);
+//            }
+//
+//            String xxxx = testList.toString();
+//
+//            testList.clear();
+//            for(double dis : this.semiArray){
+//                testList.add(dis);
+//            }
+//            String yyyy = testList.toString();
+//            System.out.println();
+//        }
+//
+//        Vec semiVec = DenseVector.toDenseVec(this.semiArray);
+//
+//        DenseMatrix A = new DenseMatrix(this.semiArray.length, 3);
+//        for(int i = 0; i < this.distanceArray.length;i++){
+//            double h = this.distanceArray[i];
+//            A.updateRow(i, 1, DenseVector.toDenseVec(-0.5*h*h*h, 1.5*h, 1));
+//        }
+//        Vec X = OLSCalculater.OLS(A, semiVec);
+//
+//        double n = X.get(0);
+//        double m = X.get(1);
+//        double nugget = X.get(2);
+//
+//        double range = Math.sqrt(m / n);
+//        double partialSill = m * range;
+//
+//        System.out.println(String.format("OLS: range = %f; partialSill = %f, nugget= %f;", range, partialSill, nugget));
+//        return range;
+//    }
+
+//    public double getInitRange() {
+//        return initRange;
+//    }
 
     public double loss(double range, double partialSill, double nugget){
         if(range < 0 || partialSill < 0 || nugget < 0){

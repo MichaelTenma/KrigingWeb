@@ -26,7 +26,7 @@ public class SamplePointService {
         String sql = "" +
                 "select *, ST_AsText(geom) as point from sample_points " +
                 "where point_id != '8a23b556-7a75-4da8-b19a-152fb4c8dbe9' and " +
-                "distance <= 5000 and N > 1 and N <= 250 and xmc = '恩平市' order by random();";
+                "distance <= 5000 and N > 1 and N <= 250 and dmc = '江门市' order by random();";
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 

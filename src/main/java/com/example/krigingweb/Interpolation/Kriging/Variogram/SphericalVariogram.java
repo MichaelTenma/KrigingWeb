@@ -1,12 +1,16 @@
 package com.example.krigingweb.Interpolation.Kriging.Variogram;
 
+import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.OLSCalculater;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
+import jsat.linear.DenseMatrix;
+import jsat.linear.DenseVector;
+import jsat.linear.Vec;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 
 public class SphericalVariogram implements OrdinaryKriging.Variogram, VariogramPredictor {
-    private final double range;
-    private final double partialSill;
+    private double range;
+    private double partialSill;
     private double nugget;
 
     public SphericalVariogram(){
@@ -51,5 +55,38 @@ public class SphericalVariogram implements OrdinaryKriging.Variogram, VariogramP
             return nugget + partialSill;
         double p = h / range;
         return nugget + partialSill * 1.5 * p - partialSill * 0.5 * p * p * p;
+    }
+
+    @Override
+    public void OLS(double[] distanceArray, double[] semiArray) {
+        Vec semiVec = DenseVector.toDenseVec(semiArray);
+        DenseMatrix A = new DenseMatrix(semiArray.length, 3);
+        for(int i = 0; i < distanceArray.length;i++){
+            double h = distanceArray[i];
+            A.updateRow(i, 1, DenseVector.toDenseVec(-0.5*h*h*h, 1.5*h, 1));
+        }
+
+        Vec X = OLSCalculater.OLS(A, semiVec);
+        double n = X.get(0);
+        double m = X.get(1);
+        this.nugget = X.get(2);
+        this.range = Math.sqrt(m / n);
+        this.partialSill = m * this.range;
+        System.out.println(String.format("OLS: range = %f; partialSill = %f; nugget= %f;", this.range, this.partialSill, this.nugget));
+    }
+
+    @Override
+    public double getRange() {
+        return this.range;
+    }
+
+    @Override
+    public double getPartialSill() {
+        return this.partialSill;
+    }
+
+    @Override
+    public double getNugget() {
+        return this.nugget;
     }
 }
