@@ -141,17 +141,23 @@ public class SemiCloud {
         if(range < 0 || partialSill < 0 || nugget < 0){
             return 999999999;/* 通过巨大的损失惩罚 */
         }
+
+//        double dNeg = 0;
+//        double dPos = 0;
+//        double d = 0;
         double g = 0;
         for(int i = 0;i < this.distanceArray.length;i++){
             double distance = this.distanceArray[i];
             double realSemi = this.semiArray[i];
             double predictSemi = this.variogramPredictor.predict(distance, range, partialSill, nugget);
 
-//            double factor = distance < range ? 10000 : 0.1;
             g += Math.pow(predictSemi - realSemi, 2);
+
+//            d += realSemi - predictSemi;
         }
 //        System.out.println(g);
         return Math.sqrt(g / this.distanceArray.length);
+//        return Math.sqrt(Math.abs(d));
     }
 
     /**
