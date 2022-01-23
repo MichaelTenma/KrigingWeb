@@ -1,14 +1,11 @@
 package com.example.krigingweb.Controller;
 
 import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.SphericalTrainner;
+import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.SemiCloud;
 import com.example.krigingweb.Service.SamplePointService;
 import jsat.classifiers.DataPointPair;
-import jsat.classifiers.linear.LinearBatch;
 import jsat.linear.DenseVector;
 import jsat.linear.Vec;
-import jsat.lossfunctions.LossFunc;
-import jsat.lossfunctions.SquaredLoss;
 import jsat.math.Function;
 import jsat.math.FunctionVec;
 import jsat.math.optimization.BacktrackingArmijoLineSearch;
@@ -27,9 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static java.lang.Math.pow;
-import static javafx.scene.input.KeyCode.F;
 
 @Controller
 @RequestMapping("/kriging")
@@ -80,7 +74,9 @@ public class KrigingController {
         RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
         this.testRegressionDataSet = regressionDataSetArray[1];
 
-        SphericalTrainner sphericalTrainner = new SphericalTrainner(trainRegressionDataSet);
+        SemiCloud semiCloud = new SemiCloud(trainRegressionDataSet, 200, 30000, new SphericalVariogram());
+
+//        SphericalTrainner sphericalTrainner = new SphericalTrainner(trainRegressionDataSet);
 
         LBFGS lbfgs = new LBFGS(50, 10000, new BacktrackingArmijoLineSearch());
         Function f = new Function() {
@@ -91,20 +87,20 @@ public class KrigingController {
 
             @Override
             public double f(Vec x) {
-                return sphericalTrainner.loss(x.get(0), x.get(1), x.get(2));
+                return semiCloud.loss(x.get(0), x.get(1), x.get(2));
             }
         };
 
         FunctionVec fp = this.forwardDifference(f);
         Vec w = new DenseVector(3);
-        Vec x0 = new DenseVector(new double[]{50, 49, 81});
-        lbfgs.optimize(0.1, w, x0, f, fp, null);
+        Vec x0 = new DenseVector(new double[]{semiCloud.getInitRange(), 49, 81});
+        lbfgs.optimize(0.000001, w, x0, f, fp, null);
 
         double range = w.get(0);
         double partialSill = w.get(1);
         double nugget = w.get(2);
 
-        System.out.println(String.format("range: %f, partialSill: %f, nugget: %f\n", range, partialSill, nugget));
+        System.out.println(String.format("range = %f; partialSill = %f; nugget = %f\n", range, partialSill, nugget));
 
         this.ordinaryKriging = new OrdinaryKriging(new SphericalVariogram(range, partialSill, nugget), nugget);
 //        this.ordinaryKriging = new OrdinaryKriging(new SphericalVariogram(14619.32, 116.1889, 1263.084), 1263.084);

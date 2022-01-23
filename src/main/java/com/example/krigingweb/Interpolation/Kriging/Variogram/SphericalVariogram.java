@@ -1,12 +1,17 @@
 package com.example.krigingweb.Interpolation.Kriging.Variogram;
 
+import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 
-public class SphericalVariogram implements OrdinaryKriging.Variogram {
+public class SphericalVariogram implements OrdinaryKriging.Variogram, VariogramPredictor {
     private final double range;
     private final double partialSill;
     private double nugget;
+
+    public SphericalVariogram(){
+        this(0.1, 0.1, 0);
+    }
 
     public SphericalVariogram(double range, double partialSill){
         this(range, partialSill, 0);
@@ -32,10 +37,7 @@ public class SphericalVariogram implements OrdinaryKriging.Variogram {
 
     @Override
     public double val(double h) {
-        if (h >= range)
-            return nugget + partialSill;
-        double p = h / range;
-        return nugget + partialSill * (1.5 * p - 0.5 * p * p * p);
+        return this.predict(h, this.range, this.partialSill, this.nugget);
     }
 
     @Override
@@ -43,4 +45,11 @@ public class SphericalVariogram implements OrdinaryKriging.Variogram {
         return new SphericalVariogram(this.range, this.partialSill, this.nugget);
     }
 
+    @Override
+    public double predict(double h, double range, double partialSill, double nugget) {
+        if (h >= range)
+            return nugget + partialSill;
+        double p = h / range;
+        return nugget + partialSill * 1.5 * p - partialSill * 0.5 * p * p * p;
+    }
 }
