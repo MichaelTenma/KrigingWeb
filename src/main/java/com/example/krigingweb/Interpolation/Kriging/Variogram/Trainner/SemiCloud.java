@@ -1,30 +1,28 @@
 package com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner;
 
+import com.example.krigingweb.MathUtil;
 import jsat.classifiers.DataPoint;
 import jsat.classifiers.DataPointPair;
-import jsat.linear.*;
 import jsat.regression.RegressionDataSet;
 
 import java.util.*;
 
-public class SemiCloud {
+public class SemiCloud<V extends VariogramPredictor> {
     private final RegressionDataSet originalDataSet;
     private double[] semiArray;
     private double[] distanceArray;
 
-//    private double initRange;
     private final double lag;
     private final double lagDistance;/* 滞后距离 */
 
-    private final VariogramPredictor variogramPredictor;
-    public SemiCloud(RegressionDataSet originalDataSet, double lag, double lagDistance, VariogramPredictor variogramPredictor) {
+    private final V variogramPredictor;
+    public SemiCloud(RegressionDataSet originalDataSet, double lag, double lagDistance, V variogramPredictor) {
         this.originalDataSet = originalDataSet;
         this.lag = lag;
         this.lagDistance = lagDistance;
         this.variogramPredictor = variogramPredictor;
 
         this.semiVariogram();
-//        this.initRange = this.calInitRange();
     }
 
     private void semiVariogram(){
@@ -73,91 +71,108 @@ public class SemiCloud {
         GrouperResult grouperResult = Grouper.groupDistance(this.distanceArray, this.semiArray, this.lag, this.lagDistance);
         this.distanceArray = grouperResult.distanceArray;
         this.semiArray = grouperResult.semiArray;
+
+        MathUtil.arrayToString("distance", this.distanceArray);
+        MathUtil.arrayToString("semi", this.semiArray);
     }
 
-    public VariogramPredictor OLS(){
-        {
-            List<Double> testList = new ArrayList<>(this.distanceArray.length);
-            for(double dis : this.distanceArray){
-                testList.add(dis);
-            }
 
-            String xxxx = testList.toString();
-
-            testList.clear();
-            for(double dis : this.semiArray){
-                testList.add(dis);
-            }
-            String yyyy = testList.toString();
-            System.out.println();
-        }
-
-        this.variogramPredictor.OLS(this.distanceArray, this.semiArray);
+    public V trainVariogram(){
+        int rangeIndex = this.calRangeIndex(this.distanceArray, this.semiArray);
+        this.variogramPredictor.OLS(rangeIndex, this.distanceArray, this.semiArray);
         return this.variogramPredictor;
     }
 
-//    private double calInitRange(){
-//        {
-//            List<Double> testList = new ArrayList<>(this.distanceArray.length);
-//            for(double dis : this.distanceArray){
-//                testList.add(dis);
-//            }
-//
-//            String xxxx = testList.toString();
-//
-//            testList.clear();
-//            for(double dis : this.semiArray){
-//                testList.add(dis);
-//            }
-//            String yyyy = testList.toString();
-//            System.out.println();
-//        }
-//
-//        Vec semiVec = DenseVector.toDenseVec(this.semiArray);
-//
-//        DenseMatrix A = new DenseMatrix(this.semiArray.length, 3);
-//        for(int i = 0; i < this.distanceArray.length;i++){
-//            double h = this.distanceArray[i];
-//            A.updateRow(i, 1, DenseVector.toDenseVec(-0.5*h*h*h, 1.5*h, 1));
-//        }
-//        Vec X = OLSCalculater.OLS(A, semiVec);
-//
-//        double n = X.get(0);
-//        double m = X.get(1);
-//        double nugget = X.get(2);
-//
-//        double range = Math.sqrt(m / n);
-//        double partialSill = m * range;
-//
-//        System.out.println(String.format("OLS: range = %f; partialSill = %f, nugget= %f;", range, partialSill, nugget));
-//        return range;
-//    }
+    private int calRangeIndex(double[] distanceArray, double[] semiArray){
+        int beginRangeIndex = 0;
+        int endRangeIndex = distanceArray.length - 1;
 
-//    public double getInitRange() {
-//        return initRange;
-//    }
+        int groupNum = 15;
+        while((endRangeIndex - beginRangeIndex) > 2){/* 若间隔为1，则说明左右端点相邻 */
+            final int length = (endRangeIndex - beginRangeIndex) + 1;
+            int groupStep = (int) Math.ceil(length * 1.0 / groupNum);/* 向上取整 */
+            if(groupStep < 1){/* 每组间隔至少为1步 */
+                groupStep = 1;
+                groupNum = length;
+            }
+
+            /* 计算每一组的RMSE，找出最小RMSE的变程点 */
+            double minRMSE = 0.0;
+            boolean firstFlag = true;
+
+            /* 用于记录最小RMSE变程点所在区间 */
+            int nextBeginRangeIndex = beginRangeIndex - groupStep;
+            int nextEndRangeIndex = beginRangeIndex + 2 * groupStep;
+
+            /* 用每一组中点RMSE作为该组的平均值 */
+            for(int leftRangeIndex = beginRangeIndex;leftRangeIndex < endRangeIndex;){
+                /* 当前组中点的距离 */
+                int rightRangeIndex = leftRangeIndex + groupStep;
+                /* 不能超越endRangeIndex */
+                if(rightRangeIndex > endRangeIndex) rightRangeIndex = endRangeIndex;
+
+                final int middleRangeIndex = (leftRangeIndex + rightRangeIndex) / 2;
+                this.variogramPredictor.OLS(middleRangeIndex, distanceArray, semiArray);
+
+                /* 变程点左侧RMSE */
+                double RMSE = this.loss(this.variogramPredictor);
+
+                if(firstFlag){
+                    minRMSE = RMSE;
+                    firstFlag = false;
+                }else if(RMSE < minRMSE){
+                    /* 找出最小RMSE的变程点 */
+                    minRMSE = RMSE;
+
+                    /* 最优变程点在minRMSE所在的区间，取相邻的区间，一共保留三个区间 */
+                    nextBeginRangeIndex = middleRangeIndex - groupStep;
+                    nextEndRangeIndex = middleRangeIndex + groupStep;
+                }
+                leftRangeIndex = rightRangeIndex;
+            }
+
+            /* 更新探测区间 */
+            beginRangeIndex = nextBeginRangeIndex;
+            endRangeIndex = nextEndRangeIndex;
+
+            /* 避免越界 */
+            if(beginRangeIndex < 0) beginRangeIndex = 0;
+            if(endRangeIndex >= distanceArray.length) endRangeIndex = distanceArray.length - 1;
+
+        }
+        return (beginRangeIndex + endRangeIndex) / 2;
+    }
+
+    public double loss(V variogramPredictor){
+        return this.loss(
+            variogramPredictor.getRange(),
+            variogramPredictor.getPartialSill(),
+            variogramPredictor.getNugget()
+        );
+    }
 
     public double loss(double range, double partialSill, double nugget){
+        return SemiCloud.loss(range, partialSill, nugget, this.distanceArray, this.semiArray, this.variogramPredictor);
+    }
+
+    private static double loss(
+        double range, double partialSill, double nugget,
+        double[] distanceArray, double[] semiArray,
+        VariogramPredictor variogramPredictor
+    ){
         if(range < 0 || partialSill < 0 || nugget < 0){
             return 999999999;/* 通过巨大的损失惩罚 */
         }
 
-//        double dNeg = 0;
-//        double dPos = 0;
-//        double d = 0;
         double g = 0;
-        for(int i = 0;i < this.distanceArray.length;i++){
-            double distance = this.distanceArray[i];
-            double realSemi = this.semiArray[i];
-            double predictSemi = this.variogramPredictor.predict(distance, range, partialSill, nugget);
+        for(int i = 0;i < distanceArray.length;i++){
+            double distance = distanceArray[i];
+            double realSemi = semiArray[i];
+            double predictSemi = variogramPredictor.predict(distance, range, partialSill, nugget);
 
             g += Math.pow(predictSemi - realSemi, 2);
-
-//            d += realSemi - predictSemi;
         }
-//        System.out.println(g);
-        return Math.sqrt(g / this.distanceArray.length);
-//        return Math.sqrt(Math.abs(d));
+        return Math.sqrt(g / distanceArray.length);
     }
 
     /**
@@ -170,15 +185,4 @@ public class SemiCloud {
         return Math.pow((Zi - Zj), 2);
     }
 
-    /**
-     * 计算点a与点b之间的欧几里得距离（二范数）
-     * @param aX 点a的X坐标
-     * @param aY 点a的Y坐标
-     * @param bX 点b的X坐标
-     * @param bY 点b的Y坐标
-     * @return 欧几里得距离
-     */
-    private static double norm2(double aX, double aY, double bX, double bY){
-        return Math.sqrt(Math.pow((aX - bX), 2) + Math.pow((aY - bY), 2));
-    }
 }

@@ -1,17 +1,19 @@
 package com.example.krigingweb.Controller;
 
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Log10Variogram;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.SemiCloud;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
 import com.example.krigingweb.Service.SamplePointService;
 import jsat.classifiers.DataPointPair;
+import jsat.classifiers.linear.LinearSGD;
 import jsat.linear.DenseVector;
 import jsat.linear.Vec;
+import jsat.lossfunctions.HingeLoss;
 import jsat.math.Function;
 import jsat.math.FunctionVec;
 import jsat.math.optimization.BacktrackingArmijoLineSearch;
 import jsat.math.optimization.LBFGS;
+import jsat.math.optimization.stochastic.AdaGrad;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 import org.locationtech.jts.geom.*;
@@ -77,56 +79,31 @@ public class KrigingController {
         RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
         this.testRegressionDataSet = regressionDataSetArray[1];
 
-        SemiCloud semiCloud = new SemiCloud(trainRegressionDataSet, 200, 100000, new SphericalVariogram());
-//        VariogramPredictor variogramPredictor = semiCloud.OLS();
-//        double range = variogramPredictor.getRange();
-//        double partialSill = variogramPredictor.getPartialSill();
-//        double nugget = variogramPredictor.getNugget();
+        SphericalVariogram sphericalVariogram = new SphericalVariogram();
+        SemiCloud<SphericalVariogram> semiCloud = new SemiCloud<>(trainRegressionDataSet, 200, 35000, sphericalVariogram);
+//        System.out.println("range: " + semiCloud.calRange());
+        sphericalVariogram = semiCloud.trainVariogram();
+        System.out.println(sphericalVariogram);
+        System.out.println("RMSE: " + semiCloud.loss(sphericalVariogram));
 
-        LBFGS lbfgs = new LBFGS(1000, 10000, new BacktrackingArmijoLineSearch());
-        Function f = new Function() {
-            @Override
-            public double f(double... x) {
-                return this.f(DenseVector.toDenseVec(x));
-            }
-
-            @Override
-            public double f(Vec x) {
-                return semiCloud.loss(x.get(0), x.get(1), x.get(2));
-            }
-        };
-
-        Random random = new Random();
-
-        FunctionVec fp = this.forwardDifference(f);
-        Vec w = new DenseVector(3);
-        Vec x0 = new DenseVector(new double[]{
-                random.nextDouble() * 20000,
-                random.nextDouble() * 20000,
-                random.nextDouble() * 20000
-        });
-
-        System.out.println("x0: " + x0);
-
-        lbfgs.optimize(0.000001, w, x0, f, fp, null);
-
-        double range = w.get(0);
-        double partialSill = w.get(1);
-        double nugget = w.get(2);
-
-        System.out.println(String.format("range = %f; partialSill = %f; nugget = %f\n", range, partialSill, nugget));
-
-        this.ordinaryKriging = new OrdinaryKriging(new SphericalVariogram(range, partialSill, nugget), nugget);
 //        this.ordinaryKriging = new OrdinaryKriging(new SphericalVariogram(14619.32, 116.1889, 1263.084), 1263.084);
+        this.ordinaryKriging = new OrdinaryKriging(sphericalVariogram);
+
         this.ordinaryKriging.train(
             trainRegressionDataSet, Executors.newFixedThreadPool(7)
         );
+
+        System.out.println(this.calRMSE(trainRegressionDataSet.getDPPList()));
         return "success";
     }
 
     @GetMapping("/regress")
     public String regress(){
         List<DataPointPair<Double>> list = this.testRegressionDataSet.getDPPList();
+        return this.calRMSE(list);
+    }
+
+    private String calRMSE(List<DataPointPair<Double>> list){
         List<Double> errorList = new ArrayList<>(list.size());
 
         for(DataPointPair<Double> dataPointPair : list){
@@ -137,72 +114,12 @@ public class KrigingController {
         return String.format("MAE: %f, RMSE: %f, size: %d", KrigingController.MAE(errorList), KrigingController.RMSE(errorList), errorList.size());
         // 12761016.3187, 2637209.9114
     }
-
-    private FunctionVec forwardDifference(Function f){
-
-        FunctionVec fp = new FunctionVec() {
-            @Override
-            public Vec f(double... x)
-            {
-                return f(DenseVector.toDenseVec(x));
-            }
-
-            @Override
-            public Vec f(Vec x)
-            {
-                Vec s = x.clone();
-                f(x, s);
-                return s;
-            }
-
-            @Override
-            public Vec f(Vec x, Vec s){
-                if(s == null)
-                {
-                    s = x.clone();
-                    s.zeroOut();
-                }
-
-                double sqrtEps = Math.sqrt(2e-16);
-
-                double f_x = f.f(x);
-
-                Vec x_ph = x.clone();
-
-                for(int i = 0; i < x.length(); i++)
-                {
-                    double h = Math.max(Math.abs(x.get(i))*sqrtEps, 1e-5);
-                    x_ph.set(i, x.get(i)+h);
-                    double f_xh = f.f(x_ph);
-                    s.set(i, (f_xh-f_x)/h);//set derivative estimate
-                    x_ph.set(i, x.get(i));
-                }
-
-                return s;
-            }
-
-            @Override
-            public Vec f(Vec x, Vec s, ExecutorService ex)
-            {
-                return f(x, s);
-            }
-        };
-        return fp;
-    }
-
     private static double MAE(List<Double> errorList){
         double MAE = 0;
         for(double error : errorList){
             MAE += Math.abs(error);
         }
         return MAE / errorList.size();
-    }
-
-    private static double f(double h, double a, double b, double c){
-        if (h >= a)
-            return c + b;
-        double p = h / a;
-        return c + b * (1.5 * p - 0.5 * p * p * p);
     }
 
     private static double RMSE(List<Double> errorList){

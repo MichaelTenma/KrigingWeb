@@ -26,7 +26,7 @@ public class SamplePointService {
         String sql = "" +
                 "select *, ST_AsText(geom) as point from sample_points " +
                 "where point_id != '8a23b556-7a75-4da8-b19a-152fb4c8dbe9' and " +
-                "distance <= 5000 and N > 1 and N <= 250 and xmc = '恩平市' order by random();";
+                "distance <= 5000 and N > 1 and N <= 250 and xmc = '高州市' order by random();";
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 
@@ -34,7 +34,7 @@ public class SamplePointService {
         List<SamplePointEntity> samplePointEntityList = this.list();
 
         List<DataPointPair<Double>> trainList = new ArrayList<>((int) (samplePointEntityList.size() * 0.9));
-        List<DataPointPair<Double>> testList = new ArrayList<>((int) (samplePointEntityList.size() * 0.1));
+        List<DataPointPair<Double>> testList = new ArrayList<>(samplePointEntityList.size() - trainList.size());
 
         int i = 0;
         for(SamplePointEntity samplePointEntity : samplePointEntityList){
