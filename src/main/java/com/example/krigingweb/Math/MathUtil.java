@@ -1,4 +1,6 @@
-package com.example.krigingweb;
+package com.example.krigingweb.Math;
+
+import java.util.List;
 
 public final class MathUtil {
 
@@ -59,5 +61,21 @@ public final class MathUtil {
         }
         text.setCharAt(text.length() - 1, ']');
         System.out.println(text.append(";"));
+    }
+
+    public static double MAE(List<Double> errorList){
+        double MAE = 0;
+        for(double error : errorList){
+            MAE += Math.abs(error);
+        }
+        return MAE / errorList.size();
+    }
+
+    public static double RMSE(List<Double> errorList){
+        double RMSE = 0;
+        for(double error : errorList){
+            RMSE += Math.pow(error, 2);
+        }
+        return Math.sqrt(RMSE / errorList.size());
     }
 }

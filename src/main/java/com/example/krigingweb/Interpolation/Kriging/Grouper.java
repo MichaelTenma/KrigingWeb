@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner;
+package com.example.krigingweb.Interpolation.Kriging;
 
 public class Grouper {
 

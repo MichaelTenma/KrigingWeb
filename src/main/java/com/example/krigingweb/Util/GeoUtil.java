@@ -1,4 +1,4 @@
-package com.example.krigingweb;
+package com.example.krigingweb.Util;
 
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;

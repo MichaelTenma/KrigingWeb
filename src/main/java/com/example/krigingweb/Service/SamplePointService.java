@@ -2,14 +2,16 @@ package com.example.krigingweb.Service;
 
 import com.example.krigingweb.Entity.RowMapper.SamplePointRowMapper;
 import com.example.krigingweb.Entity.SamplePointEntity;
+import com.example.krigingweb.Enum.SoilNutrientEnum;
 import jsat.classifiers.DataPoint;
 import jsat.classifiers.DataPointPair;
 import jsat.linear.DenseVector;
 import jsat.regression.RegressionDataSet;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,28 +27,32 @@ public class SamplePointService {
     public List<SamplePointEntity> list(){
         String sql = "" +
                 "select *, ST_AsText(geom) as point from sample_points " +
-                "where point_id != '8a23b556-7a75-4da8-b19a-152fb4c8dbe9' and " +
-                "distance <= 5000 and N > 1 and N <= 250 and xmc = '高州市' order by random();";
+                "where distance <= 5000 and xmc = '恩平市' order by random();";
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 
-    public RegressionDataSet[] getRegressionDataSet(){
-        List<SamplePointEntity> samplePointEntityList = this.list();
+    @SneakyThrows
+    public static RegressionDataSet[] samplePointToRegressionDataSet(
+        List<SamplePointEntity> samplePointEntityList, SoilNutrientEnum soilNutrientEnum
+    ) {
+        final double trainPercent = 0.9;
+        Method getSoilNutrientMethod = SamplePointEntity.class.getMethod("get" + soilNutrientEnum);
 
-        List<DataPointPair<Double>> trainList = new ArrayList<>((int) (samplePointEntityList.size() * 0.9));
+        List<DataPointPair<Double>> trainList = new ArrayList<>((int) (samplePointEntityList.size() * trainPercent));
         List<DataPointPair<Double>> testList = new ArrayList<>(samplePointEntityList.size() - trainList.size());
 
         int i = 0;
         for(SamplePointEntity samplePointEntity : samplePointEntityList){
             i++;
+            double nutrient = (Double) getSoilNutrientMethod.invoke(samplePointEntity);
             DataPointPair<Double> dataPointPair = new DataPointPair<Double>(
                 new DataPoint(
-                        new DenseVector(new double[]{
-                                samplePointEntity.getGeom().getX(), samplePointEntity.getGeom().getY()
-                        })
-                ),samplePointEntity.getN()
+                    new DenseVector(new double[]{
+                        samplePointEntity.getGeom().getX(), samplePointEntity.getGeom().getY()
+                    })
+                ), nutrient
             );
-            if(i <= samplePointEntityList.size() * 0.9){
+            if(i <= samplePointEntityList.size() * trainPercent){
                 trainList.add(dataPointPair);
             }else{
                 testList.add(dataPointPair);

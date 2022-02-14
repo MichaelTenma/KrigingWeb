@@ -1,7 +1,7 @@
 package com.example.krigingweb.Interpolation.Kriging.Variogram;
 
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.OLSCalculater;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
+import com.example.krigingweb.Interpolation.Kriging.VariogramPredictor;
+import com.example.krigingweb.Math.OLSCalculater;
 import jsat.linear.DenseMatrix;
 import jsat.linear.DenseVector;
 import jsat.linear.Vec;

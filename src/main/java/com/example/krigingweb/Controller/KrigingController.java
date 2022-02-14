@@ -1,19 +1,14 @@
 package com.example.krigingweb.Controller;
 
+import com.example.krigingweb.Entity.LandEntity;
+import com.example.krigingweb.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.SemiCloud;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner.VariogramPredictor;
+import com.example.krigingweb.Math.MathUtil;
+import com.example.krigingweb.Service.InterpolationService;
+import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
+import com.example.krigingweb.Util.Tuple;
 import jsat.classifiers.DataPointPair;
-import jsat.classifiers.linear.LinearSGD;
-import jsat.linear.DenseVector;
-import jsat.linear.Vec;
-import jsat.lossfunctions.HingeLoss;
-import jsat.math.Function;
-import jsat.math.FunctionVec;
-import jsat.math.optimization.BacktrackingArmijoLineSearch;
-import jsat.math.optimization.LBFGS;
-import jsat.math.optimization.stochastic.AdaGrad;
 import jsat.regression.OrdinaryKriging;
 import jsat.regression.RegressionDataSet;
 import org.locationtech.jts.geom.*;
@@ -26,19 +21,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Controller
 @RequestMapping("/kriging")
 @ResponseBody
 public class KrigingController {
     private final SamplePointService samplePointService;
+    private final InterpolationService interpolationService;
+    private final LandService landService;
 
     @Autowired
-    public KrigingController(SamplePointService samplePointService) {
+    public KrigingController(SamplePointService samplePointService, InterpolationService interpolationService, LandService landService) {
         this.samplePointService = samplePointService;
+        this.interpolationService = interpolationService;
+        this.landService = landService;
     }
 
     @GetMapping("generate")
@@ -70,28 +66,16 @@ public class KrigingController {
         return result.toString();
     }
 
-
     private OrdinaryKriging ordinaryKriging = null;
     private RegressionDataSet testRegressionDataSet = null;
     @GetMapping("/train")
     public String train(){
-        RegressionDataSet[] regressionDataSetArray = samplePointService.getRegressionDataSet();
+        RegressionDataSet[] regressionDataSetArray = SamplePointService.samplePointToRegressionDataSet(
+                samplePointService.list(), SoilNutrientEnum.N
+        );
         RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
         this.testRegressionDataSet = regressionDataSetArray[1];
-
-        SphericalVariogram sphericalVariogram = new SphericalVariogram();
-        SemiCloud<SphericalVariogram> semiCloud = new SemiCloud<>(trainRegressionDataSet, 200, 35000, sphericalVariogram);
-//        System.out.println("range: " + semiCloud.calRange());
-        sphericalVariogram = semiCloud.trainVariogram();
-        System.out.println(sphericalVariogram);
-        System.out.println("RMSE: " + semiCloud.loss(sphericalVariogram));
-
-//        this.ordinaryKriging = new OrdinaryKriging(new SphericalVariogram(14619.32, 116.1889, 1263.084), 1263.084);
-        this.ordinaryKriging = new OrdinaryKriging(sphericalVariogram);
-
-        this.ordinaryKriging.train(
-            trainRegressionDataSet, Executors.newFixedThreadPool(7)
-        );
+        this.ordinaryKriging = this.interpolationService.trainOrdinaryKriging(trainRegressionDataSet).first;
 
         System.out.println(this.calRMSE(trainRegressionDataSet.getDPPList()));
         return "success";
@@ -103,6 +87,14 @@ public class KrigingController {
         return this.calRMSE(list);
     }
 
+    @GetMapping("/interpolate")
+    public List<LandEntity> interpolate(){
+        List<LandEntity> landEntityList = this.interpolationService.interpolate(
+            this.samplePointService.list(), this.landService.list(), 300
+        );
+        return landEntityList;
+    }
+
     private String calRMSE(List<DataPointPair<Double>> list){
         List<Double> errorList = new ArrayList<>(list.size());
 
@@ -111,22 +103,7 @@ public class KrigingController {
             double predictValue = ordinaryKriging.regress(dataPointPair.getDataPoint());
             errorList.add(predictValue - value);
         }
-        return String.format("MAE: %f, RMSE: %f, size: %d", KrigingController.MAE(errorList), KrigingController.RMSE(errorList), errorList.size());
+        return String.format("MAE: %f, RMSE: %f, size: %d", MathUtil.MAE(errorList), MathUtil.RMSE(errorList), errorList.size());
         // 12761016.3187, 2637209.9114
-    }
-    private static double MAE(List<Double> errorList){
-        double MAE = 0;
-        for(double error : errorList){
-            MAE += Math.abs(error);
-        }
-        return MAE / errorList.size();
-    }
-
-    private static double RMSE(List<Double> errorList){
-        double RMSE = 0;
-        for(double error : errorList){
-            RMSE += Math.pow(error, 2);
-        }
-        return Math.sqrt(RMSE / errorList.size());
     }
 }

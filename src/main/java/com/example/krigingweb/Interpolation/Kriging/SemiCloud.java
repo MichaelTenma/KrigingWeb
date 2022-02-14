@@ -1,6 +1,6 @@
-package com.example.krigingweb.Interpolation.Kriging.Variogram.Trainner;
+package com.example.krigingweb.Interpolation.Kriging;
 
-import com.example.krigingweb.MathUtil;
+import com.example.krigingweb.Math.MathUtil;
 import jsat.classifiers.DataPoint;
 import jsat.classifiers.DataPointPair;
 import jsat.regression.RegressionDataSet;
@@ -75,7 +75,6 @@ public class SemiCloud<V extends VariogramPredictor> {
         MathUtil.arrayToString("distance", this.distanceArray);
         MathUtil.arrayToString("semi", this.semiArray);
     }
-
 
     public V trainVariogram(){
         int rangeIndex = this.calRangeIndex(this.distanceArray, this.semiArray);
