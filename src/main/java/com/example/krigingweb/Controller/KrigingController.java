@@ -1,16 +1,7 @@
 package com.example.krigingweb.Controller;
 
-import com.example.krigingweb.Entity.LandEntity;
-import com.example.krigingweb.Enum.SoilNutrientEnum;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
-import com.example.krigingweb.Math.MathUtil;
-import com.example.krigingweb.Service.InterpolationService;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
-import com.example.krigingweb.Util.Tuple;
-import jsat.classifiers.DataPointPair;
-import jsat.regression.OrdinaryKriging;
-import jsat.regression.RegressionDataSet;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
@@ -19,21 +10,19 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
-import java.util.ArrayList;
-import java.util.List;
 
 @Controller
 @RequestMapping("/kriging")
 @ResponseBody
 public class KrigingController {
     private final SamplePointService samplePointService;
-    private final InterpolationService interpolationService;
+//    private final Interpolater interpolater;
     private final LandService landService;
 
     @Autowired
-    public KrigingController(SamplePointService samplePointService, InterpolationService interpolationService, LandService landService) {
+    public KrigingController(SamplePointService samplePointService, LandService landService) {
         this.samplePointService = samplePointService;
-        this.interpolationService = interpolationService;
+//        this.interpolater = interpolater;
         this.landService = landService;
     }
 
@@ -66,44 +55,37 @@ public class KrigingController {
         return result.toString();
     }
 
-    private OrdinaryKriging ordinaryKriging = null;
-    private RegressionDataSet testRegressionDataSet = null;
-    @GetMapping("/train")
-    public String train(){
-        RegressionDataSet[] regressionDataSetArray = SamplePointService.samplePointToRegressionDataSet(
-                samplePointService.list(), SoilNutrientEnum.N
-        );
-        RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
-        this.testRegressionDataSet = regressionDataSetArray[1];
-        this.ordinaryKriging = this.interpolationService.trainOrdinaryKriging(trainRegressionDataSet).first;
-
-        System.out.println(this.calRMSE(trainRegressionDataSet.getDPPList()));
-        return "success";
-    }
-
-    @GetMapping("/regress")
-    public String regress(){
-        List<DataPointPair<Double>> list = this.testRegressionDataSet.getDPPList();
-        return this.calRMSE(list);
-    }
-
-    @GetMapping("/interpolate")
-    public List<LandEntity> interpolate(){
-        List<LandEntity> landEntityList = this.interpolationService.interpolate(
-            this.samplePointService.list(), this.landService.list(), 300
-        );
-        return landEntityList;
-    }
-
-    private String calRMSE(List<DataPointPair<Double>> list){
-        List<Double> errorList = new ArrayList<>(list.size());
-
-        for(DataPointPair<Double> dataPointPair : list){
-            double value = dataPointPair.getPair();
-            double predictValue = ordinaryKriging.regress(dataPointPair.getDataPoint());
-            errorList.add(predictValue - value);
-        }
-        return String.format("MAE: %f, RMSE: %f, size: %d", MathUtil.MAE(errorList), MathUtil.RMSE(errorList), errorList.size());
-        // 12761016.3187, 2637209.9114
-    }
+//    @GetMapping("/train")
+//    public String train(){
+//        RegressionDataSet[] regressionDataSetArray = SamplePointService.samplePointToRegressionDataSet(
+//                samplePointService.list(), SoilNutrientEnum.N
+//        );
+//        RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
+//        RegressionDataSet testRegressionDataSet = regressionDataSetArray[1];
+//        Regressor regressor = this.interpolater.trainOrdinaryKriging(trainRegressionDataSet).first;
+//
+//
+//        List<DataPointPair<Double>> trainList = trainRegressionDataSet.getDPPList();
+//        ErrorEntity trainErrorEntity = new ErrorEntity(
+//                ErrorEntity.calError(trainList, regressor)
+//        );
+//
+//        List<DataPointPair<Double>> testList = testRegressionDataSet.getDPPList();
+//        ErrorEntity testErrorEntity = new ErrorEntity(
+//                ErrorEntity.calError(testList, regressor)
+//        );
+//
+//        return String.format(
+//            "train: <br/>%s, size: %d<br/>test: <br/>%s, size: %d",
+//            trainErrorEntity, trainList.size(),
+//            testErrorEntity, testList.size()
+//        );
+//    }
+//
+//    @GetMapping("/interpolate")
+//    public List<LandEntity> interpolate(){
+//        return this.interpolater.interpolate(
+//            this.samplePointService.list(), this.landService.list(), 300
+//        );
+//    }
 }

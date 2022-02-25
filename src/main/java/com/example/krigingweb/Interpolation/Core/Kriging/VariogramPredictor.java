@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.Kriging;
+package com.example.krigingweb.Interpolation.Core.Kriging;
 
 public abstract class VariogramPredictor {
 

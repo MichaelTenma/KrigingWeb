@@ -1,4 +1,4 @@
-package com.example.krigingweb.Util;
+package com.example.krigingweb.Interpolation.Core.Util;
 
 public class Tuple<First, Second> {
     public First first;

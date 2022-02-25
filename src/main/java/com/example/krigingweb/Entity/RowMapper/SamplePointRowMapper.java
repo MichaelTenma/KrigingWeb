@@ -1,15 +1,17 @@
 package com.example.krigingweb.Entity.RowMapper;
 
 import com.example.krigingweb.Entity.SamplePointEntity;
-import com.example.krigingweb.Util.GeoUtil;
+import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.io.ParseException;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
+@Component
 public class SamplePointRowMapper implements RowMapper<SamplePointEntity> {
 
     @Override

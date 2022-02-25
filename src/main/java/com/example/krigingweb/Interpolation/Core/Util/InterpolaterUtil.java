@@ -1,52 +1,61 @@
-package com.example.krigingweb.Service;
+package com.example.krigingweb.Interpolation.Core.Util;
 
 import com.example.krigingweb.Entity.ErrorEntity;
 import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Entity.NutrientEntity;
 import com.example.krigingweb.Entity.SamplePointEntity;
-import com.example.krigingweb.Enum.SoilNutrientEnum;
-import com.example.krigingweb.Interpolation.NutrientFilter;
-import com.example.krigingweb.Util.GeoUtil;
-import com.example.krigingweb.Interpolation.Kriging.InterpolationTask;
-import com.example.krigingweb.Interpolation.Kriging.Variogram.SphericalVariogram;
-import com.example.krigingweb.Interpolation.Kriging.SemiCloud;
-import com.example.krigingweb.Util.Tuple;
-import jsat.classifiers.DataPoint;
-import jsat.classifiers.DataPointPair;
+import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
+import com.example.krigingweb.Interpolation.Core.Kriging.FixOrdinaryKriging;
+import com.example.krigingweb.Entity.NutrientFilter;
+import com.example.krigingweb.Service.SamplePointService;
+import com.example.krigingweb.Interpolation.Core.Kriging.InterpolationTask;
+import com.example.krigingweb.Interpolation.Core.Kriging.Variogram.SphericalVariogram;
+import com.example.krigingweb.Interpolation.Core.Kriging.SemiCloud;
 import jsat.linear.DenseVector;
-import jsat.regression.OrdinaryKriging;
+import jsat.linear.Vec;
 import jsat.regression.RegressionDataSet;
-import lombok.SneakyThrows;
+import jsat.regression.Regressor;
 import org.locationtech.jts.geom.*;
-import org.springframework.stereotype.Service;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Service
-public class InterpolationService {
+public class InterpolaterUtil {
 
     /**
      * @param samplePointEntityList 采样点
      * @param landEntityList 插值地块
-     * @return
+     * @param cellSize 插值精度（米）
+     * @return 插值后的地块
      */
-    @SneakyThrows
-    public List<LandEntity> interpolate(
+    public static List<LandEntity> interpolate(
         List<SamplePointEntity> samplePointEntityList,
         List<LandEntity> landEntityList, double cellSize
-    ) {
+    ) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Map<SoilNutrientEnum, InterpolationTask> interpolationTaskMap = new HashMap<>(SoilNutrientEnum.values().length);
 
-        for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
+        SoilNutrientEnum[] soilNutrientEnumArray = SoilNutrientEnum.values();
+        for(SoilNutrientEnum soilNutrientEnum : soilNutrientEnumArray){
             /* 应该对采样点各个指标进行过滤 */
             System.out.println("\n" + soilNutrientEnum);
             List<SamplePointEntity> filterSamplePointEntityList = samplePointEntityList.stream()
                     .filter(NutrientFilter.get(soilNutrientEnum)).collect(Collectors.toList());
+
+            Vec originalPoint = null;
+            {
+                SamplePointEntity samplePointEntity =
+                        filterSamplePointEntityList != null ? filterSamplePointEntityList.get(0) : null;
+
+                if(samplePointEntity != null){
+                    Point point = samplePointEntity.getGeom();
+                    originalPoint = new DenseVector(new double[]{
+                        point.getX(), point.getY()
+                    });
+                }
+            }
 
             RegressionDataSet[] regressionDataSetArray =
                     SamplePointService.samplePointToRegressionDataSet(filterSamplePointEntityList, soilNutrientEnum);
@@ -54,39 +63,41 @@ public class InterpolationService {
             RegressionDataSet trainRegressionDataSet = regressionDataSetArray[0];
             RegressionDataSet testRegressionDataSet = regressionDataSetArray[1];
 
-            Tuple<OrdinaryKriging, SphericalVariogram> tuple = this.trainOrdinaryKriging(trainRegressionDataSet);
-            OrdinaryKriging ordinaryKriging = tuple.first;
+            Tuple<Regressor, SphericalVariogram> tuple = trainOrdinaryKriging(trainRegressionDataSet);
+            Regressor regressor = tuple.first;
             SphericalVariogram sphericalVariogram = tuple.second;
 
             ErrorEntity testErrorEntity = new ErrorEntity(
-                this.calError(testRegressionDataSet.getDPPList(), ordinaryKriging)
+                ErrorEntity.calError(testRegressionDataSet.getDPPList(), regressor)
             );
 
             ErrorEntity trainErrorEntity = new ErrorEntity(
-                this.calError(trainRegressionDataSet.getDPPList(), ordinaryKriging)
+                ErrorEntity.calError(trainRegressionDataSet.getDPPList(), regressor)
             );
 
             Method setSoilNutrientMethod =
                     LandEntity.class.getMethod("set" + soilNutrientEnum, NutrientEntity.class);
-            interpolationTaskMap.put(soilNutrientEnum, new InterpolationTask(
-                ordinaryKriging, testErrorEntity, trainErrorEntity, sphericalVariogram, setSoilNutrientMethod
-            ));
+
+            InterpolationTask interpolationTask = new InterpolationTask(
+                    regressor, originalPoint, sphericalVariogram, setSoilNutrientMethod, trainErrorEntity, testErrorEntity
+            );
+            interpolationTaskMap.put(soilNutrientEnum, interpolationTask);
         }
 
         for(LandEntity landEntity : landEntityList){
-            this.interpolate(landEntity, interpolationTaskMap, cellSize);
+            interpolate(landEntity, interpolationTaskMap, cellSize, soilNutrientEnumArray);
         }
 
         return landEntityList;
     }
 
-    private LandEntity interpolate(
-        LandEntity landEntity, Map<SoilNutrientEnum, InterpolationTask> interpolationTaskMap, double cellSize
+    private static LandEntity interpolate(
+        LandEntity landEntity, Map<SoilNutrientEnum, InterpolationTask> interpolationTaskMap, double cellSize,
+        final SoilNutrientEnum[] soilNutrientEnumArray
     ) throws InvocationTargetException, IllegalAccessException {
         final Geometry geometry = landEntity.getMultiPolygon();
         final Envelope envelope = geometry.getEnvelopeInternal();
         final double halfCellSize = cellSize / 2;
-        final SoilNutrientEnum[] soilNutrientEnumArray = SoilNutrientEnum.values();
 
         /* 默认初始化为0.0，用于存储养分的插值结果 */
         double[] nutrientArray = new double[soilNutrientEnumArray.length];
@@ -102,9 +113,9 @@ public class InterpolationService {
                     for(int i = 0;i < nutrientArray.length;i++){
                         SoilNutrientEnum soilNutrientEnum = soilNutrientEnumArray[i];
                         InterpolationTask interpolationTask = interpolationTaskMap.get(soilNutrientEnum);
-                        nutrientArray[i] += interpolationTask.getRegressor().regress(new DataPoint(
-                            new DenseVector(new double[]{point.getX(), point.getY()})
-                        ));
+                        nutrientArray[i] += interpolationTask.getRegressor().regress(
+                            GeoUtil.buildDataPoint(point)
+                        );
                     }
                     sumNum++;
                 }
@@ -121,11 +132,11 @@ public class InterpolationService {
         return landEntity;
     }
 
-    public Tuple<OrdinaryKriging, SphericalVariogram> trainOrdinaryKriging(RegressionDataSet trainRegressionDataSet){
-        return this.trainOrdinaryKriging(trainRegressionDataSet, 100, 35000);
+    public static Tuple<Regressor, SphericalVariogram> trainOrdinaryKriging(RegressionDataSet trainRegressionDataSet){
+        return trainOrdinaryKriging(trainRegressionDataSet, 100, 35000);
     }
 
-    public Tuple<OrdinaryKriging, SphericalVariogram> trainOrdinaryKriging(
+    public static Tuple<Regressor, SphericalVariogram> trainOrdinaryKriging(
         RegressionDataSet trainRegressionDataSet, double lag, double lagDistance
     ){
         SphericalVariogram sphericalVariogram = new SphericalVariogram();
@@ -137,20 +148,9 @@ public class InterpolationService {
         System.out.println(sphericalVariogram);
         System.out.println("RMSE: " + semiCloud.loss(sphericalVariogram));
 
-        OrdinaryKriging ordinaryKriging = new OrdinaryKriging(sphericalVariogram);
+        FixOrdinaryKriging ordinaryKriging = new FixOrdinaryKriging(sphericalVariogram, 0.0, sphericalVariogram.getNugget());
         ordinaryKriging.train(trainRegressionDataSet);
         return new Tuple<>(ordinaryKriging, sphericalVariogram);
-    }
-
-    private List<Double> calError(List<DataPointPair<Double>> list, OrdinaryKriging ordinaryKriging){
-        List<Double> errorList = new ArrayList<>(list.size());
-
-        for(DataPointPair<Double> dataPointPair : list){
-            double value = dataPointPair.getPair();
-            double predictValue = ordinaryKriging.regress(dataPointPair.getDataPoint());
-            errorList.add(predictValue - value);
-        }
-        return errorList;
     }
 }
 

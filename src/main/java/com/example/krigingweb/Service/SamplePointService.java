@@ -2,12 +2,14 @@ package com.example.krigingweb.Service;
 
 import com.example.krigingweb.Entity.RowMapper.SamplePointRowMapper;
 import com.example.krigingweb.Entity.SamplePointEntity;
-import com.example.krigingweb.Enum.SoilNutrientEnum;
-import jsat.classifiers.DataPoint;
+import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
+import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import jsat.classifiers.DataPointPair;
-import jsat.linear.DenseVector;
 import jsat.regression.RegressionDataSet;
 import lombok.SneakyThrows;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPoint;
+import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -45,12 +47,8 @@ public class SamplePointService {
         for(SamplePointEntity samplePointEntity : samplePointEntityList){
             i++;
             double nutrient = (Double) getSoilNutrientMethod.invoke(samplePointEntity);
-            DataPointPair<Double> dataPointPair = new DataPointPair<Double>(
-                new DataPoint(
-                    new DenseVector(new double[]{
-                        samplePointEntity.getGeom().getX(), samplePointEntity.getGeom().getY()
-                    })
-                ), nutrient
+            DataPointPair<Double> dataPointPair = new DataPointPair<>(
+                GeoUtil.buildDataPoint(samplePointEntity.getGeom()), nutrient
             );
             if(i <= samplePointEntityList.size() * trainPercent){
                 trainList.add(dataPointPair);
@@ -64,4 +62,15 @@ public class SamplePointService {
             RegressionDataSet.usingDPPList(testList),
         };
     }
+
+    public static Geometry getConvexHull(List<SamplePointEntity> samplePointEntityList){
+        Point[] points = new Point[samplePointEntityList.size()];
+        for(int i = 0;i < samplePointEntityList.size();i++){
+            SamplePointEntity samplePointEntity = samplePointEntityList.get(i);
+            points[i] = samplePointEntity.getGeom();
+        }
+        MultiPoint multiPoint = GeoUtil.geometryFactory.createMultiPoint(points);
+        return multiPoint.convexHull();
+    }
+
 }

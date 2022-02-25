@@ -19,7 +19,7 @@ public class OLSCalculater {
         /* LUP: x = inv(A'A)A'b */
         LUPDecomposition lup = new LUPDecomposition(ATA);
         Vec xSolution = lup.solve(ATb);
-        if(Double.isNaN(lup.det()) || Math.abs(lup.det()) < 1e-5) {
+        if(Double.isInfinite(lup.det()) || Double.isNaN(lup.det()) || Math.abs(lup.det()) < 1e-5) {
             SingularValueDecomposition svd = new SingularValueDecomposition(ATA);
             xSolution = svd.solve(ATb);
         }

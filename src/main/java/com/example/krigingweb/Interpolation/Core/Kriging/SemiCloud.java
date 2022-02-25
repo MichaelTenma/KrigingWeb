@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.Kriging;
+package com.example.krigingweb.Interpolation.Core.Kriging;
 
 import com.example.krigingweb.Math.MathUtil;
 import jsat.classifiers.DataPoint;
