@@ -38,14 +38,14 @@ class UndoneTaskManager {
         return this.taskCount.incrementAndGet();
     }
 
-    public int doneTask(UUID taskID){
+    public TaskData doneTask(UUID taskID){
         return this.removeTask(taskID);
     }
 
-    private int removeTask(UUID taskID){
+    private TaskData removeTask(UUID taskID){
         this.undoneTaskQueue.remove(taskID);
-        this.undoneTaskMap.remove(taskID);
-        return this.taskCount.decrementAndGet();
+        this.taskCount.decrementAndGet();
+        return this.undoneTaskMap.remove(taskID);
     }
 
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 5 * 60 * 1000)

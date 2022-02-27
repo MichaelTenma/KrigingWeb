@@ -1,5 +1,6 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
+import com.sun.istack.internal.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.HashMap;
@@ -26,6 +27,9 @@ class InterpolaterStore {
     private final Lock totalUndoneTaskLimitLock = new ReentrantLock();
     private final Condition totalUndoneTaskLimitCondition = this.totalUndoneTaskLimitLock.newCondition();
 
+    private final Lock zeroInterpolaterLimitLock = new ReentrantLock();
+    private final Condition zeroInterpolaterLimitCondition = this.zeroInterpolaterLimitLock.newCondition();
+
     private final UndoneTaskManager undoneTaskManager;
 
     public InterpolaterStore(UndoneTaskManager undoneTaskManager) {
@@ -36,6 +40,7 @@ class InterpolaterStore {
         this.interpolaterQueue.add(interpolaterID);
         this.interpolaterURLMap.put(interpolaterID, url);
         this.totalUndoneTaskLimit.addAndGet(this.undoneTaskLimitPerInterpolater);
+        this.zeroInterpolaterLimitCondition.signalAll();
         return this.count();
     }
 
@@ -53,7 +58,7 @@ class InterpolaterStore {
         this.totalUndoneTaskLimitLock.lock();
         try {
             if(this.undoneTaskManager.getCount() > this.totalUndoneTaskLimit.get()){
-                this.totalUndoneTaskLimitCondition.wait();
+                this.totalUndoneTaskLimitCondition.await();
             }else{
                 this.totalUndoneTaskLimitCondition.signalAll();
             }
@@ -64,6 +69,25 @@ class InterpolaterStore {
         }
     }
 
+    /**
+     * 零插值结点阻塞
+     */
+    private void zeroInterpolaterLimit(){
+        this.zeroInterpolaterLimitLock.lock();
+        try {
+            if(this.count() <= 0)
+                this.zeroInterpolaterLimitCondition.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            this.zeroInterpolaterLimitLock.unlock();
+        }
+    }
+
+    /**
+     * 随机获取一个插值结点，无需考虑返回值为null的情况
+     * @return 插值结点的UUID
+     */
     public UUID getInterpolater(){
         /* 总负载限制 */
         this.checkLimit();
@@ -79,12 +103,12 @@ class InterpolaterStore {
                 this.deleteInterpolater(interpolaterID);
                 interpolaterID = null;
             }
-        }
-
-        if(interpolaterID == null && this.interpolaterURLMap.size() > 0){
-            Thread.yield();
+        }else{
+            /* 零插值结点阻塞 */
+            this.zeroInterpolaterLimit();
             interpolaterID = this.getInterpolater();
         }
+
         return interpolaterID;
     }
 

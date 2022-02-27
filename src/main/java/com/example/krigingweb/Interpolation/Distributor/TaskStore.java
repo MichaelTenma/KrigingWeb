@@ -1,10 +1,6 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
-import com.example.krigingweb.Entity.LandEntity;
-import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.Interpolation.Core.TaskData;
-
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;

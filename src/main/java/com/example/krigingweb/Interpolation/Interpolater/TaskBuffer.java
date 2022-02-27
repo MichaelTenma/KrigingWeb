@@ -1,6 +1,7 @@
 package com.example.krigingweb.Interpolation.Interpolater;
 
 import com.example.krigingweb.Interpolation.Core.TaskData;
+import com.example.krigingweb.Interpolation.Interpolater.Exception.InterpolaterException;
 
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
@@ -16,11 +17,11 @@ class TaskBuffer {
     private final TaskInterpolater taskInterpolater;
     private final ExecutorService executorService;
 
-    private final InterpolateException.Handler interpolateExceptionHandler;
+    private final InterpolaterException.Handler interpolateExceptionHandler;
 
     public TaskBuffer(
         TaskInterpolater taskInterpolater, ExecutorService executorService,
-        InterpolateException.Handler interpolateExceptionHandler
+        InterpolaterException.Handler interpolateExceptionHandler
     ) {
         this.taskInterpolater = taskInterpolater;
         this.executorService = executorService;
@@ -47,7 +48,7 @@ class TaskBuffer {
                         /* 分派任务到处理结点 */
                         this.taskInterpolater.interpolate(taskData);
                         completableFuture.complete(taskData);
-                    } catch (InterpolateException e) {
+                    } catch (InterpolaterException e) {
                         /* 忽视异常即可，当分派结点发现任务超时未完成时便会重发任务，
                          * 当然，会导致性能损耗，同时在插值结点出现问题时也无法及时发现
                          */

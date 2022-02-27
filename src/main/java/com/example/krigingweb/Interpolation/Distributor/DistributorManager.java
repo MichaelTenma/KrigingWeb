@@ -1,11 +1,13 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Entity.LandEntity;
-import com.example.krigingweb.Interpolation.Core.Enum.StatusEnum;
 import com.example.krigingweb.Interpolation.Core.TaskData;
+import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Service.LandService;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -33,8 +35,8 @@ public class DistributorManager {
 
         this.taskDistributor = new TaskDistributor(
             this.undoneTaskManager, this.interpolaterStore,
-            this.taskUpdater, restTemplate
-        );
+            this.taskUpdater, restTemplate,
+                executorService);
         this.taskStore = new TaskStore(this.taskDistributor);
         this.taskGenerator = new TaskGenerator(this.taskStore, landService);
 
@@ -46,10 +48,24 @@ public class DistributorManager {
                 /* 生成器任务完成，但不代表插值工作完成，还需要等待UndoneTask */
             }
         });
+
+        this.taskDistributor.setInterpolaterExceptionHandler((interpolaterID, taskData) -> {
+            /* 尝试重传十次仍然失败，则认为该结点已经瘫痪 */
+            this.deleteInterpolater(interpolaterID);
+            this.taskStore.addTask(taskData);
+        });
     }
 
-    public void doneTask(UUID taskID, List<LandEntity> landEntityList){
-        this.taskDistributor.doneTask(taskID, landEntityList);
+    /**
+     * 完成该插值任务，并向数据库更新
+     * @param taskID 插值任务ID
+     * @param landEntityList 插值后的地块结果
+     * @return 整个插值任务花费的秒数
+     */
+    public DoneTaskStatus doneTask(UUID taskID, List<LandEntity> landEntityList){
+        TaskData taskData = this.undoneTaskManager.doneTask(taskID);
+        this.taskUpdater.update(landEntityList);
+        return new DoneTaskStatus(taskData);
     }
 
     public void registerInterpolater(UUID interpolaterID, String url) {
@@ -74,19 +90,4 @@ public class DistributorManager {
     public void start(){
         this.taskGenerator.start();
     }
-
-//    @Override
-//    public void pause(){
-//        this.taskGenerator.pause();
-//    }
-//
-//    @Override
-//    public void resume() {
-//        this.taskGenerator.resume();
-//    }
-//
-//    @Override
-//    public void stop(){
-//        this.taskGenerator.stop();
-//    }
 }
