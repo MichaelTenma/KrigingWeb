@@ -1,13 +1,8 @@
-server.port: 8090
+server.port: 8099
+#spring.jackson:
+#  time-zone: GMT+8
+#  date-format: yyyy-MM-dd HH:mm:ss
+
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/ctpf
-    username: postgres
-    password: w.w1w+
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-  aop:
-    auto: true
+  profiles:
+    active: both

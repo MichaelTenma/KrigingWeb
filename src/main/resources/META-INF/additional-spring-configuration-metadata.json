@@ -1,0 +1,53 @@
+{
+  "properties": [
+    {
+      "name": "distributor.undoneTaskLimitPerInterpolater",
+      "type": "java.lang.Integer",
+      "description": "单个插值结点最大的未完成插值任务数量。"
+    },
+    {
+      "name": "distributor.currentNumber",
+      "type": "java.lang.Integer",
+      "description": "分派结点的并行线程数量。"
+    },
+    {
+      "name": "distributor.enable",
+      "type": "java.lang.Boolean",
+      "description": "用于标记是否启动分派结点。"
+    },
+    {
+      "name": "distributor.timeoutMinutes",
+      "type": "java.lang.Long",
+      "description": "单个任务最长的等待时间。"
+    },
+    {
+      "name": "interpolater.callbackHttpEnum",
+      "type": "com.example.krigingweb.Interpolation.Basic.Enum.CallbackHttpEnum",
+      "description": "回调插值结点时所用的http协议类型。"
+    },
+    {
+      "name": "interpolater.distributorURL",
+      "type": "java.lang.String",
+      "description": "目标分派结点的链接。"
+    },
+    {
+      "name": "interpolater.currentNumber",
+      "type": "java.lang.Integer",
+      "description": "插值结点的并行线程数量。"
+    },
+    {
+      "name": "interpolater.enable",
+      "type": "java.lang.Boolean",
+      "description": "用于标记是否启动插值结点。"
+    },
+    {
+      "name": "interpolater.cellSize",
+      "type": "java.lang.Double",
+      "description": "插值精度，单位：米。"
+    },
+    {
+      "name": "interpolater.maxInvalidNum",
+      "type": "java.lang.Integer",
+      "description": "插值无效值的最大容忍数量，如：某地块某指标插值结果为NaN、Inf等即视为无效值。"
+    }
+  ] }

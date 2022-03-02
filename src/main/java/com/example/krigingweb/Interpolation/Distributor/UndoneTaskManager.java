@@ -3,9 +3,7 @@ package com.example.krigingweb.Interpolation.Distributor;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-
 import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Queue;
@@ -24,8 +22,11 @@ class UndoneTaskManager {
     @Setter
     private TimeoutHandler timeoutHandler;
 
-    @Value(value = "${distributor.timeoutMinutes}")
-    private long timeoutMinutes = 15;
+    private final DistributorProperties distributorProperties;
+
+    UndoneTaskManager(DistributorProperties distributorProperties) {
+        this.distributorProperties = distributorProperties;
+    }
 
     @FunctionalInterface
     public interface TimeoutHandler {
@@ -51,7 +52,10 @@ class UndoneTaskManager {
     @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 5 * 60 * 1000)
     private void timeout(){
         log.info("[UNDONE TASK TIMEOUT]: check timeout.");
-        ZonedDateTime boundZonedDateTime = ZonedDateTime.now().minusMinutes(this.timeoutMinutes);
+        ZonedDateTime boundZonedDateTime = ZonedDateTime.now().minusMinutes(
+            this.distributorProperties.getTimeoutMinutes()
+        );
+
         while(true){
             UUID taskID = this.undoneTaskQueue.poll();
             if(taskID == null) break;

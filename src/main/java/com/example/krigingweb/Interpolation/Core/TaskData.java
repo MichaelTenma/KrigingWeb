@@ -2,17 +2,21 @@ package com.example.krigingweb.Interpolation.Core;
 
 import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Entity.SamplePointEntity;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import lombok.*;
 
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-public class TaskData {
-    public final UUID taskID;
-    private final ZonedDateTime createTime;
-
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class TaskData  {
+    public UUID taskID;
+    private ZonedDateTime createTime;
     private List<SamplePointEntity> samplePointEntityList;
     private List<LandEntity> landEntityList;
 
@@ -21,17 +25,6 @@ public class TaskData {
             UUID.randomUUID(), ZonedDateTime.now(),
             samplePointEntityList, landEntityList
         );
-    }
-
-    public TaskData(
-        UUID taskID, ZonedDateTime createTime,
-        List<SamplePointEntity> samplePointEntityList,
-        List<LandEntity> landEntityList
-    ) {
-        this.taskID = taskID;
-        this.createTime = createTime;
-        this.samplePointEntityList = samplePointEntityList;
-        this.landEntityList = landEntityList;
     }
 
     public boolean isTimeOut(ZonedDateTime boundTime){

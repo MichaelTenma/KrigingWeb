@@ -1,0 +1,8 @@
+interpolater:
+  enable: true
+  currentNumber: 4
+  distributorURL: http://localhost:${server.port}
+  callbackHttpEnum: http
+  cellSize: 300
+  maxInvalidNum: 5
+

@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.Core;
+package com.example.krigingweb.Interpolation.Basic;
 
 public interface StatusManage {
     void start();

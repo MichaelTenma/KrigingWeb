@@ -1,8 +1,10 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
+import com.example.krigingweb.Interpolation.Basic.HttpUtil;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Exception.InterpolaterException;
 import lombok.Setter;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -20,8 +22,8 @@ class TaskDistributor {
     private InterpolaterException.Handler interpolaterExceptionHandler;
 
     public TaskDistributor(
-        UndoneTaskManager undoneTaskManager, InterpolaterStore interpolaterStore,
-        TaskUpdater taskUpdater, RestTemplate restTemplate, ExecutorService executorService
+            UndoneTaskManager undoneTaskManager, InterpolaterStore interpolaterStore,
+            RestTemplate restTemplate, ExecutorService executorService
     ) {
         this.undoneTaskManager = undoneTaskManager;
         this.interpolaterStore = interpolaterStore;
@@ -44,25 +46,20 @@ class TaskDistributor {
         TaskData taskData, UUID interpolaterID, String url
     ) {
         /* 必须发起异步请求 */
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        this.executorService.submit(() -> {
-            boolean isSuccess = this.postTaskData(url, taskData, 10);
-            if(isSuccess){
-                completableFuture.complete(true);
-            }else{
+        return CompletableFuture.supplyAsync(() -> {
+            boolean isSuccess = this.postTaskData(url, taskData, 5);
+            if(!isSuccess){
                 /* 尝试重传十次仍然失败，则认为该结点已经瘫痪 */
                 this.interpolaterExceptionHandler.handle(interpolaterID, taskData);
-                completableFuture.completeExceptionally(new InterpolaterException(interpolaterID));
             }
-        });
-        return completableFuture;
+            return isSuccess;
+        }, this.executorService);
     }
 
     private boolean postTaskData(String url, TaskData taskData, int lessTry){
-        if(lessTry <= 0)
-            return false;
-
-        ResponseEntity<String> responseEntity = this.restTemplate.postForEntity(url, taskData, String.class);
+        if(lessTry <= 0) return false;
+        HttpEntity httpEntity = new HttpEntity(taskData, HttpUtil.jsonHeaders);
+        ResponseEntity<String> responseEntity = this.restTemplate.postForEntity(url, httpEntity, String.class);
         if(responseEntity.getStatusCode().equals(HttpStatus.OK)){
             this.undoneTaskManager.addUndoneTask(taskData);
             return true;
@@ -71,3 +68,4 @@ class TaskDistributor {
         }
     }
 }
+

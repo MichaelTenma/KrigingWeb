@@ -1,13 +1,15 @@
-package com.example.krigingweb.Interpolation.Core;
+package com.example.krigingweb.Interpolation.Basic;
 
-import com.example.krigingweb.Interpolation.Core.Enum.StatusEnum;
+import com.example.krigingweb.Interpolation.Basic.Enum.StatusEnum;
+import lombok.Data;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
-import org.springframework.stereotype.Component;
 
-@Component
-public class RectangleSearcher implements StatusManage{
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+
+public class RectangleSearcher implements StatusManage {
     /**
      * bias是用于兼容gcj02与wgs1984以及国家2000大地坐标系之间的差别，
      * 向四周扩宽5公里，保证整个广东在这三种坐标系下都涵盖在大矩形框中
@@ -20,11 +22,17 @@ public class RectangleSearcher implements StatusManage{
     private static final double y_max = 2939884.095192 + bias;
 
     private static final int rowNum = 20;// N
-    private static final int colNum = 20;// M
+    private static final int colNum = 32;// M
 
     /* 向上取整，避免由于双精度浮点运算带来的舍入误差而导致某些地块不被涵盖在矩形框内 */
     private static final double x_gap = Math.ceil((x_max - x_min) / colNum);
     private static final double y_gap = Math.ceil((y_max - y_min) / rowNum);
+
+    private final ExecutorService executorService;
+
+    public RectangleSearcher(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
 
     public static class Rectangle {
         private final double left;
@@ -120,12 +128,20 @@ public class RectangleSearcher implements StatusManage{
         this.stop();
     }
 
+    @Data
+    public class BooleanObject{
+        private boolean value;
+        public BooleanObject(boolean value){
+            this.value = value;
+        }
+    }
+
     /**
      * 将广东省切分成多份，逐份搜索
      * @param landSearcher 地块搜索器，编写与数据库耦合的代码
      * @return True表示完成所有矩形框的搜索工作，False表示搜索过程中由于某些情况而中止
      */
-    public boolean search(LandSearcher landSearcher){
+    public CompletableFuture<BooleanObject> search(LandSearcher landSearcher){
         /* 根据矩形框随机选择一个未插值地块 */
         /* 向外扩展选择约有350个点（一般来说应该多选一些点） */
         /* 每个指标选择350个有效点 */
@@ -133,20 +149,32 @@ public class RectangleSearcher implements StatusManage{
         /* 根据多边形生成对角线长度1/20的内缓冲区 */
         /* 各指标缓冲区求交集，得最小缓冲区 */
         /* 查找最小缓冲区内的地块，务必保证缓冲区内至少有一个地块 */
-        boolean isDone = true;
+        BooleanObject booleanObject = new BooleanObject(true);
+        CompletableFuture<BooleanObject> completableFuture = new CompletableFuture<>();
         outer:
         for(int row = this.beginRow; row < RectangleSearcher.rowNum; row++){
             for(int col = this.beginCol; col < RectangleSearcher.colNum; col++){
                 if(!this.statusEnum.equals(StatusEnum.Run)){
                     this.beginRow = row;
                     this.beginCol = col;
-                    isDone = false;
+                    booleanObject.setValue(false);
                     break outer;
                 }
-                landSearcher.search(this.createRectangle(row, col));
+
+                final int finalRow = row;
+                final int finalCol = col;
+                this.executorService.submit(() -> {
+                    landSearcher.search(this.createRectangle(finalRow, finalCol));
+                    if(
+                        finalCol == RectangleSearcher.colNum - 1 &&
+                        finalRow == RectangleSearcher.rowNum - 1
+                    ){
+                        completableFuture.complete(booleanObject);
+                    }
+                });
             }
         }
-        return isDone;
+        return completableFuture;
     }
 
     public static Rectangle getExtent(){

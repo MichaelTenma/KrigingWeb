@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.Core.Util;
+package com.example.krigingweb.Interpolation.Basic;
 
 import javax.servlet.http.HttpServletRequest;
 import java.net.InetAddress;

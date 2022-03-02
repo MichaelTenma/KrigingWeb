@@ -1,8 +1,5 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
-import com.sun.istack.internal.NotNull;
-import org.springframework.beans.factory.annotation.Value;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -18,9 +15,6 @@ class InterpolaterStore {
     private final Queue<UUID> interpolaterQueue = new ConcurrentLinkedQueue<>();
     private final Map<UUID, String> interpolaterURLMap = new HashMap<>();
 
-    /* 单个interpolater未完成插值任务的限制数量 */
-    @Value(value = "${distributor.undoneTaskLimitPerInterpolater}")
-    private int undoneTaskLimitPerInterpolater = 100;
     private final AtomicInteger totalUndoneTaskLimit = new AtomicInteger(0);
 
     /* 限制当前最大未完成插值任务数量，避免冲垮插值集群 */
@@ -32,21 +26,30 @@ class InterpolaterStore {
 
     private final UndoneTaskManager undoneTaskManager;
 
-    public InterpolaterStore(UndoneTaskManager undoneTaskManager) {
+    private final DistributorProperties distributorProperties;
+
+    public InterpolaterStore(UndoneTaskManager undoneTaskManager, DistributorProperties distributorProperties) {
         this.undoneTaskManager = undoneTaskManager;
+        this.distributorProperties = distributorProperties;
     }
 
     public int registerInterpolater(UUID interpolaterID, String url){
         this.interpolaterQueue.add(interpolaterID);
         this.interpolaterURLMap.put(interpolaterID, url);
-        this.totalUndoneTaskLimit.addAndGet(this.undoneTaskLimitPerInterpolater);
-        this.zeroInterpolaterLimitCondition.signalAll();
+        this.totalUndoneTaskLimit.addAndGet(this.distributorProperties.getUndoneTaskLimitPerInterpolater());
+
+        {
+            this.zeroInterpolaterLimitLock.lock();
+            this.zeroInterpolaterLimitCondition.signalAll();
+            this.zeroInterpolaterLimitLock.unlock();
+        }
+
         return this.count();
     }
 
     public int deleteInterpolater(UUID interpolaterID){
         if(this.interpolaterURLMap.remove(interpolaterID) != null){
-            this.totalUndoneTaskLimit.addAndGet(-this.undoneTaskLimitPerInterpolater);
+            this.totalUndoneTaskLimit.addAndGet(-this.distributorProperties.getUndoneTaskLimitPerInterpolater());
         }
         return this.count();
     }
@@ -121,5 +124,9 @@ class InterpolaterStore {
      */
     public int count(){
         return this.interpolaterURLMap.size();
+    }
+
+    public Map<UUID, String> getInterpolaterURLMap(){
+        return this.interpolaterURLMap;
     }
 }

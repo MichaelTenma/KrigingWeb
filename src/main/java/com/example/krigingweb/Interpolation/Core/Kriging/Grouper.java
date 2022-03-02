@@ -29,7 +29,7 @@ public class Grouper {
 
 //        int N = (int) Math.ceil(maxDistance / lag);
         int N = (int)Math.ceil(lagDistance / lag);
-        System.out.println("N: " + N);
+//        System.out.println("N: " + N);
 
         double[] tempDistanceArray = new double[N];
         double[] tempSemiArray = new double[N];

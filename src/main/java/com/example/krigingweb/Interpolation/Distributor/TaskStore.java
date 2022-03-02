@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class TaskStore {
-    private static final int gapNum = 10;
+    private static final int gapNum = 3;
     private final Queue<TaskData> data;
     private final AtomicInteger count;
 

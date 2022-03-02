@@ -4,14 +4,16 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Service.LandService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
-
-import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+@Slf4j
 public class DistributorManager {
     private final TaskGenerator taskGenerator;
     private final TaskStore taskStore;
@@ -23,29 +25,36 @@ public class DistributorManager {
 
     private final ExecutorService executorService;
 
+    private final DistributorProperties distributorProperties;
+
     public DistributorManager(
-        ExecutorService executorService, RestTemplate restTemplate, LandService landService
+        ExecutorService executorService, RestTemplate restTemplate,
+        LandService landService, DistributorProperties distributorProperties,
+        ObjectMapper objectMapper
     ) {
         this.executorService = executorService;
+        this.distributorProperties = distributorProperties;
 
-        this.undoneTaskManager = new UndoneTaskManager();
-        this.interpolaterStore = new InterpolaterStore(this.undoneTaskManager);
+        this.undoneTaskManager = new UndoneTaskManager(distributorProperties);
+        this.interpolaterStore = new InterpolaterStore(this.undoneTaskManager, distributorProperties);
 
         this.taskUpdater = new TaskUpdater(landService);
 
         this.taskDistributor = new TaskDistributor(
             this.undoneTaskManager, this.interpolaterStore,
-            this.taskUpdater, restTemplate,
-                executorService);
+            restTemplate, executorService
+        );
         this.taskStore = new TaskStore(this.taskDistributor);
-        this.taskGenerator = new TaskGenerator(this.taskStore, landService);
+        this.taskGenerator = new TaskGenerator(this.taskStore, landService, executorService);
 
         this.undoneTaskManager.setTimeoutHandler(this.taskStore::addTask);
         this.taskGenerator.setDoneHandler(() -> {
             if(landService.hasLandToInterpolate()){
                 this.start();
+//                this.stop();
             }else{
                 /* 生成器任务完成，但不代表插值工作完成，还需要等待UndoneTask */
+                log.info("[DISTRIBUTOR]: task generator done. ");
             }
         });
 
@@ -88,6 +97,16 @@ public class DistributorManager {
      * 一经开始，便只有完成全部地块的插值才能停止
      */
     public void start(){
-        this.taskGenerator.start();
+        if(this.distributorProperties.isEnable()){
+            log.info("[DISTRIBUTOR]: start");
+            CompletableFuture.supplyAsync(() -> {
+                this.taskGenerator.start();
+                return null;
+            }, this.executorService);
+        }
+    }
+
+    public Map<UUID, String> getInterpolaterURLMap(){
+        return this.interpolaterStore.getInterpolaterURLMap();
     }
 }
