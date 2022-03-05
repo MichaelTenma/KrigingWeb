@@ -60,9 +60,7 @@ class TaskInterpolater {
     ) throws TaskDataInterpolateException, MaxInvalidNutrientValueNumException {
         try {
             List<LandEntity> landEntityList = InterpolaterUtil.interpolate(
-                taskData.getSamplePointEntityList(),
-                taskData.getLandEntityList(),
-                this.cellSize, this.maxInvalidNum, 200
+                taskData, this.cellSize, this.maxInvalidNum, 200
             );
             taskData.update(landEntityList);
             this.taskRebacker.reback(taskData);

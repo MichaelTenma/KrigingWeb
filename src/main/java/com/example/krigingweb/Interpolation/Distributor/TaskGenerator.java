@@ -69,7 +69,7 @@ class TaskGenerator implements StatusManage {
                         Geometry convexHull = SamplePointService.getConvexHull(samplePointEntityList);
 
                         /* 根据最长距离的1/10生成缓冲区 */
-                        double correctDistance = -maxDistance * 0.5;
+                        double correctDistance = -maxDistance * 0.65;
                         Geometry buffer = convexHull.buffer(correctDistance);
                         List<LandEntity> landEntityList = this.landService.list(buffer, InterpolatedStatusEnum.UnStart);
                         this.landService.markPrepareInterpolated(landEntityList);

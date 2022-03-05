@@ -1,22 +1,21 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
-import com.example.krigingweb.Interpolation.Distributor.Service.DistributorService;
 import com.example.krigingweb.Service.LandService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.web.servlet.ServletRegistrationBean;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.remoting.caucho.HessianServiceExporter;
-import org.springframework.remoting.httpinvoker.HttpInvokerServiceExporter;
-import org.springframework.remoting.rmi.RmiServiceExporter;
+import org.springframework.context.annotation.Import;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.DispatcherServlet;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@ConditionalOnProperty(prefix = "distributor", name = "enable", havingValue = "true")
 @Configuration
+@Import({DataSourceAutoConfiguration.class})
 public class DistributorConfig {
     private final RestTemplate restTemplate;
     private final LandService landService;

@@ -4,8 +4,10 @@ import com.example.krigingweb.Interpolation.Basic.Enum.CallbackHttpEnum;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+@ConditionalOnProperty(prefix = "interpolater", name = "enable", havingValue = "true")
 @Component
 @Getter
 public class InterpolaterProperties {

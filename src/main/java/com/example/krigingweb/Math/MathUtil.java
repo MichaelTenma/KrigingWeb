@@ -63,19 +63,35 @@ public final class MathUtil {
         System.out.println(text.append(";"));
     }
 
-    public static double MAE(List<Double> errorList){
-        double MAE = 0;
-        for(double error : errorList){
-            MAE += Math.abs(error);
+    private static double[] toArray(List<Double> list){
+        double[] array = new double[list.size()];
+        for(int i = 0;i < list.size();i++){
+            array[i] = list.get(i);
         }
-        return MAE / errorList.size();
+        return array;
+    }
+
+    public static double MAE(List<Double> errorList){
+        return MathUtil.MAE(MathUtil.toArray(errorList));
     }
 
     public static double RMSE(List<Double> errorList){
+        return MathUtil.RMSE(MathUtil.toArray(errorList));
+    }
+
+    public static double MAE(double[] errorArray){
+        double MAE = 0;
+        for(double error : errorArray){
+            MAE += Math.abs(error);
+        }
+        return MAE / errorArray.length;
+    }
+
+    public static double RMSE(double[] errorArray){
         double RMSE = 0;
-        for(double error : errorList){
+        for (double error : errorArray) {
             RMSE += Math.pow(error, 2);
         }
-        return Math.sqrt(RMSE / errorList.size());
+        return Math.sqrt(RMSE / errorArray.length);
     }
 }

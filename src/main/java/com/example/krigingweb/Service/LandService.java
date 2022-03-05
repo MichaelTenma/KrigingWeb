@@ -10,6 +10,7 @@ import com.example.krigingweb.Interpolation.Basic.RectangleSearcher;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import org.locationtech.jts.geom.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
@@ -21,6 +22,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
+@ConditionalOnProperty(prefix = "distributor", name = "enable", havingValue = "true")
 @Service
 public class LandService {
     private final JdbcTemplate jdbcTemplate;
@@ -134,21 +136,21 @@ public class LandService {
     public double calMaxDistance(UUID landID, double predictDistance, int pointsNum){
         /* 每个指标选择350个有效点 */
         double maxDistance = 0;/* 各指标的有效率相差不多，只取距离最大的指标以简化代码设计 */
-        for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
+//        for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
             double testDistance = predictDistance;
             while(true){
-                Integer num = this.countPoints(landID, testDistance, soilNutrientEnum);
+                Integer num = this.countPoints(landID, testDistance, SoilNutrientEnum.N);
                 if(num < pointsNum){
-                    /* 增加300米 */
-                    testDistance += 300;
+                    /* 增加1000米 */
+                    testDistance += 1000;
                 }else{
                     break;
                 }
             }
-            if(testDistance > maxDistance){
-                maxDistance = testDistance;
-            }
-        }
+//            if(testDistance > maxDistance){
+//                maxDistance = testDistance;
+//            }
+//        }
         return maxDistance;
     }
 
@@ -174,11 +176,11 @@ public class LandService {
             if(!landEntity.couldBeUpdate()) return;
             sb.append(String.format(
                 templateValues,
-                landEntity.getN().getNutrient(),
-                landEntity.getP().getNutrient(),
-                landEntity.getK().getNutrient(),
-                landEntity.getOC().getNutrient(),
-                landEntity.getPH().getNutrient(),
+                landEntity.getN(),
+                landEntity.getP(),
+                landEntity.getK(),
+                landEntity.getOC(),
+                landEntity.getPH(),
                 InterpolatedStatusEnum.Done.toString(),
                 landEntity.getLandId()
             ));

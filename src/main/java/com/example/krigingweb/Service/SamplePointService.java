@@ -11,12 +11,14 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+@ConditionalOnProperty(prefix = "distributor", name = "enable", havingValue = "true")
 @Service
 public class SamplePointService {
     private final JdbcTemplate jdbcTemplate;

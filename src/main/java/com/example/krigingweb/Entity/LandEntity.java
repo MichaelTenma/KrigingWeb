@@ -23,28 +23,33 @@ public class LandEntity {
     private MultiPolygon multiPolygon;
 
     @JsonProperty("pH")
-    private NutrientEntity pH;
+    private Double pH;
     @JsonProperty("OC")
-    private NutrientEntity OC;
+    private Double OC;
     @JsonProperty("N")
-    private NutrientEntity N;
+    private Double N;
     @JsonProperty("P")
-    private NutrientEntity P;
+    private Double P;
     @JsonProperty("K")
-    private NutrientEntity K;
+    private Double K;
 
     public LandEntity(UUID landId, MultiPolygon multiPolygon) {
         this.landId = landId;
         this.multiPolygon = multiPolygon;
     }
 
+    private static boolean couldBeUpdate(Double nutrient){
+        boolean isFail = Double.isNaN(nutrient) || Double.isInfinite(nutrient);
+        return !isFail;
+    }
+
     public boolean couldBeUpdate(){
         return
-            this.K.couldBeUpdate() &&
-            this.N.couldBeUpdate() &&
-            this.OC.couldBeUpdate() &&
-            this.pH.couldBeUpdate() &&
-            this.P.couldBeUpdate()
+            LandEntity.couldBeUpdate(this.K) &&
+            LandEntity.couldBeUpdate(this.N) &&
+            LandEntity.couldBeUpdate(this.OC) &&
+            LandEntity.couldBeUpdate(this.pH) &&
+            LandEntity.couldBeUpdate(this.P)
         ;
     }
 }

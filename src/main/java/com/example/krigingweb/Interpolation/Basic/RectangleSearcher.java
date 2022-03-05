@@ -21,8 +21,8 @@ public class RectangleSearcher implements StatusManage {
     private static final double y_min = 2301216.219071 - bias;
     private static final double y_max = 2939884.095192 + bias;
 
-    private static final int rowNum = 20;// N
-    private static final int colNum = 32;// M
+    private static final int rowNum = 30;// N
+    private static final int colNum = 20;// M
 
     /* 向上取整，避免由于双精度浮点运算带来的舍入误差而导致某些地块不被涵盖在矩形框内 */
     private static final double x_gap = Math.ceil((x_max - x_min) / colNum);

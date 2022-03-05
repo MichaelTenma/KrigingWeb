@@ -1,6 +1,6 @@
 package com.example.krigingweb.Interpolation.Core.Kriging;
 
-import com.example.krigingweb.Entity.ErrorEntity;
+import com.example.krigingweb.Interpolation.Core.ErrorEntity;
 import jsat.linear.Vec;
 import jsat.regression.Regressor;
 import lombok.AllArgsConstructor;

@@ -12,6 +12,7 @@ import com.example.krigingweb.Request.DoneTaskRequest;
 import com.example.krigingweb.Request.RegisterRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.UUID;
 
+@ConditionalOnProperty(prefix = "distributor", name = "enable", havingValue = "true")
 @RestController
 @RequestMapping(value = "/distributor")
 @Slf4j

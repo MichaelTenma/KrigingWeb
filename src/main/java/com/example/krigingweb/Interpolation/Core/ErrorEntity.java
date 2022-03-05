@@ -1,4 +1,4 @@
-package com.example.krigingweb.Entity;
+package com.example.krigingweb.Interpolation.Core;
 
 import com.example.krigingweb.Math.MathUtil;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -22,20 +22,21 @@ public class ErrorEntity {
     @JsonProperty("RMSE")
     private Double RMSE;
 
-    public ErrorEntity(List<Double> testErrorList){
-        this.MAE = MathUtil.MAE(testErrorList);
-        this.RMSE = MathUtil.RMSE(testErrorList);
+    public ErrorEntity(double[] errorList){
+        this.MAE = MathUtil.MAE(errorList);
+        this.RMSE = MathUtil.RMSE(errorList);
     }
 
-    public static List<Double> calError(List<DataPointPair<Double>> list, Regressor regressor){
-        List<Double> errorList = new ArrayList<>(list.size());
-
+    public static double[] calError(List<DataPointPair<Double>> list, Regressor regressor){
+        double[] errorArray = new double[list.size()];
+        int i = 0;
         for(DataPointPair<Double> dataPointPair : list){
             double value = dataPointPair.getPair();
             double predictValue = regressor.regress(dataPointPair.getDataPoint());
-            errorList.add(predictValue - value);
+            errorArray[i] = predictValue - value;
+            i++;
         }
-        return errorList;
+        return errorArray;
     }
 
     @Override

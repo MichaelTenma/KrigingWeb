@@ -5,10 +5,12 @@ import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Interpolater.InterpolaterManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@ConditionalOnProperty(prefix = "interpolater", name = "enable", havingValue = "true")
 @Slf4j
 @RestController
 @RequestMapping(value = "/interpolater")

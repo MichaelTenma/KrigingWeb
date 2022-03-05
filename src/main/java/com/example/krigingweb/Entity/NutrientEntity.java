@@ -1,8 +1,8 @@
 package com.example.krigingweb.Entity;
 
+import com.example.krigingweb.Interpolation.Core.ErrorEntity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Data

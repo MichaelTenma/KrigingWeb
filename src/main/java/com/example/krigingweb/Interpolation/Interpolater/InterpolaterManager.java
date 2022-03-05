@@ -6,7 +6,6 @@ import com.example.krigingweb.Interpolation.Interpolater.Exception.MaxInvalidNut
 import com.example.krigingweb.Interpolation.Interpolater.Exception.TaskDataInterpolateException;
 import com.example.krigingweb.Request.RegisterRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestTemplate;
 import java.util.UUID;
@@ -18,12 +17,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class InterpolaterManager {
     public final UUID interpolaterID = UUID.randomUUID();
 
-    private TaskInterpolater taskInterpolater;
-    private TaskRebacker taskRebacker;
+    private final TaskInterpolater taskInterpolater;
+    private final TaskRebacker taskRebacker;
 
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
-    private AtomicInteger limitExceptionCount = new AtomicInteger(5);
+    private final AtomicInteger limitExceptionCount = new AtomicInteger(5);
 
     private final InterpolaterProperties interpolaterProperties;
 
@@ -32,7 +31,6 @@ public class InterpolaterManager {
         InterpolaterProperties interpolaterProperties
     ) {
         this.interpolaterProperties = interpolaterProperties;
-        if(!this.interpolaterProperties.isEnable()) return;
 
         this.restTemplate = restTemplate;
         this.taskRebacker = new TaskRebacker(interpolaterProperties.getDistributorURL(), interpolaterID, this.restTemplate);
@@ -64,31 +62,26 @@ public class InterpolaterManager {
      * 向分派结点注册，请勿主动调用注册，该方法将在应用启动后十秒自动执行一次
      */
     private void register(){
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                Thread.yield();
-                Thread.sleep(5000);
-            } catch (InterruptedException ignored) {
-            }
+        for(int i = 0; i < this.interpolaterProperties.getCurrentNumber();i++){
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    Thread.yield();
+                    Thread.sleep(5000);
+                } catch (InterruptedException ignored) {
+                }
 
-//            MultiValueMap<String, Object> paramMap = new LinkedMultiValueMap<>();
-            RegisterRequest registerRequest = new RegisterRequest(
-                this.interpolaterID, "/interpolater/addTask",
-                this.interpolaterProperties.getPort(), this.interpolaterProperties.getCallbackHttpEnum()
-            );
-//            JSONObject params = new JSONObject();
-//            params.put("interpolaterID", this.interpolaterID);
-//            params.put("callbackHttpEnum", this.interpolaterProperties.getCallbackHttpEnum());
-//            params.put("apiPath", "/interpolater/addTask");
-//            params.put("port", this.interpolaterProperties.getPort());
-            HttpEntity httpEntity = new HttpEntity(registerRequest, HttpUtil.jsonHeaders);
+                RegisterRequest registerRequest = new RegisterRequest(
+                        this.interpolaterID, "/interpolater/addTask",
+                        this.interpolaterProperties.getPort(), this.interpolaterProperties.getCallbackHttpEnum()
+                );
+                HttpEntity httpEntity = new HttpEntity(registerRequest, HttpUtil.jsonHeaders);
 
-            return this.restTemplate.postForEntity(
-                this.interpolaterProperties.getDistributorURL() + "/distributor/register",
-                httpEntity, String.class
-            );
-        });
-
+                return this.restTemplate.postForEntity(
+                        this.interpolaterProperties.getDistributorURL() + "/distributor/register",
+                        httpEntity, String.class
+                );
+            });
+        }
     }
 
     public void addTask(TaskData taskData){

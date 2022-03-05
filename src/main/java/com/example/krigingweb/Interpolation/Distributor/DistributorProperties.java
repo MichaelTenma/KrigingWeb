@@ -2,8 +2,10 @@ package com.example.krigingweb.Interpolation.Distributor;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+@ConditionalOnProperty(prefix = "distributor", name = "enable", havingValue = "true")
 @Component
 public class DistributorProperties {
     @Value(value = "${distributor.enable}")
