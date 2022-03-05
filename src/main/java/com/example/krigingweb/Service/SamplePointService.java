@@ -2,6 +2,7 @@ package com.example.krigingweb.Service;
 
 import com.example.krigingweb.Entity.RowMapper.SamplePointRowMapper;
 import com.example.krigingweb.Entity.SamplePointEntity;
+import com.example.krigingweb.Interpolation.Basic.RectangleSearcher;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import jsat.classifiers.DataPointPair;
@@ -32,6 +33,15 @@ public class SamplePointService {
         String sql = "" +
                 "select *, ST_AsText(geom) as point from sample_points " +
                 "where distance <= 5000 and xmc = '恩平市' order by random();";
+        return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
+    }
+
+    public List<SamplePointEntity> list(RectangleSearcher.Rectangle rectangle){
+        String sql =
+                "select *, ST_AsText(geom) as point from sample_points \n" +
+                "where distance <= %f \n" +
+                "and ST_Intersects(geom, ST_geomFromText('%s', %d));";
+        sql = String.format(sql, GeoUtil.samplePointMaxDistance, rectangle, GeoUtil.srid);
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 

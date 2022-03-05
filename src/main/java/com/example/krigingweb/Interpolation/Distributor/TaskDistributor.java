@@ -53,7 +53,7 @@ class TaskDistributor {
                 this.interpolaterExceptionHandler.handle(interpolaterID, taskData);
             }
             return isSuccess;
-        }, this.executorService);
+        });
     }
 
     private boolean postTaskData(String url, TaskData taskData, int lessTry){

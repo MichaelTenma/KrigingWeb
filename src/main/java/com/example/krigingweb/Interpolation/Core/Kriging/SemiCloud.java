@@ -72,8 +72,8 @@ public class SemiCloud<V extends VariogramPredictor> {
         this.distanceArray = grouperResult.distanceArray;
         this.semiArray = grouperResult.semiArray;
 
-        MathUtil.arrayToString("distance", this.distanceArray);
-        MathUtil.arrayToString("semi", this.semiArray);
+//        MathUtil.arrayToString("distance", this.distanceArray);
+//        MathUtil.arrayToString("semi", this.semiArray);
     }
 
     public V trainVariogram(){

@@ -6,7 +6,7 @@ distributor:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ctpf
+    url: jdbc:postgresql://localhost:5432/ctpf2
     username: postgres
     password: w.w1w+
     driver-class-name: org.postgresql.Driver

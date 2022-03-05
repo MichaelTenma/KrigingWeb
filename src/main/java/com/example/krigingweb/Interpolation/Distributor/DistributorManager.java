@@ -4,6 +4,7 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Service.LandService;
+import com.example.krigingweb.Service.SamplePointService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
@@ -30,7 +31,7 @@ public class DistributorManager {
     public DistributorManager(
         ExecutorService executorService, RestTemplate restTemplate,
         LandService landService, DistributorProperties distributorProperties,
-        ObjectMapper objectMapper
+        SamplePointService samplePointService
     ) {
         this.executorService = executorService;
         this.distributorProperties = distributorProperties;
@@ -45,7 +46,7 @@ public class DistributorManager {
             restTemplate, executorService
         );
         this.taskStore = new TaskStore(this.taskDistributor);
-        this.taskGenerator = new TaskGenerator(this.taskStore, landService, executorService);
+        this.taskGenerator = new TaskGenerator(this.taskStore, landService, executorService, samplePointService);
 
         this.undoneTaskManager.setTimeoutHandler(this.taskStore::addTask);
         this.taskGenerator.setDoneHandler(() -> {

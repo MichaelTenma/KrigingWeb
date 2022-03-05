@@ -1,9 +1,9 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Service.LandService;
+import com.example.krigingweb.Service.SamplePointService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -22,15 +22,15 @@ public class DistributorConfig {
     private final ExecutorService executorService;
     private final DistributorProperties distributorProperties;
 
-    private final ObjectMapper objectMapper;
+    private final SamplePointService samplePointService;
 
     @Autowired
-    public DistributorConfig(RestTemplate restTemplate, LandService landService, DistributorProperties distributorProperties, ObjectMapper objectMapper) {
+    public DistributorConfig(RestTemplate restTemplate, LandService landService, DistributorProperties distributorProperties, SamplePointService samplePointService) {
         this.restTemplate = restTemplate;
         this.landService = landService;
         this.distributorProperties = distributorProperties;
         this.executorService = Executors.newFixedThreadPool(distributorProperties.getCurrentNumber());
-        this.objectMapper = objectMapper;
+        this.samplePointService = samplePointService;
     }
 
     @Bean
@@ -38,7 +38,7 @@ public class DistributorConfig {
         return new DistributorManager(
             this.executorService, this.restTemplate,
             this.landService, this.distributorProperties,
-                this.objectMapper
+            this.samplePointService
         );
     }
 

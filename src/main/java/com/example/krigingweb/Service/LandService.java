@@ -63,6 +63,15 @@ public class LandService {
         return this.jdbcTemplate.query(sql, this.landRowMapper);
     }
 
+    public List<LandEntity> list(RectangleSearcher.Rectangle rectangle, InterpolatedStatusEnum interpolatedStatusEnum){
+        String sql =
+                "select *, ST_AsText(geom) as multiPolygon from 耕地地力评价单元图 " +
+                        "where ST_Intersects(geom, ST_GeomFromText('%s', %d)) " +
+                        "and interpolated_status = '%s';";
+        sql = String.format(sql, rectangle, GeoUtil.srid, interpolatedStatusEnum);
+        return this.jdbcTemplate.query(sql, this.landRowMapper);
+    }
+
     public void markPrepareInterpolated(List<LandEntity> landEntityList){
         StringBuilder sb = new StringBuilder();
         landEntityList.forEach(landEntity -> {
@@ -113,6 +122,43 @@ public class LandService {
         );
     }
 
+
+    public Double predictBufferDistance(RectangleSearcher.Rectangle rectangle, double distance, int pointsNum){
+        String sql = "WITH pre_num as (\n" +
+                "\tselect count(sample_points.*) as num from sample_points \n" +
+                "\twhere ST_Intersects(geom, ST_geomFromText('%s', %d))\n" +
+                "\tand sample_points.distance < %f\n" +
+                ")\n" +
+                "select (\n" +
+                "\t\tcase when num <= 0 then %f \n" +
+                "\t\telse sqrt((%d.0 / num) * %f / 3.14159265) end\n" +
+                "\t) as bufferDistance \n" +
+                "from pre_num;";
+
+        RectangleSearcher.Rectangle bufferRectangle = rectangle.buffer(distance);
+        sql = String.format(sql, bufferRectangle, GeoUtil.srid, GeoUtil.samplePointMaxDistance, distance, pointsNum, bufferRectangle.getArea());
+
+        return this.jdbcTemplate.queryForObject(
+                sql, (rs, rowNum) -> rs.getDouble("bufferDistance")
+        );
+    }
+
+    private Integer countPoints(RectangleSearcher.Rectangle rectangle, SoilNutrientEnum soilNutrientEnum){
+        String sql =
+                "select count(sample_points.*) as num from sample_points \n" +
+                "where ST_Intersects(geom, ST_geomFromText('%s', %d))\n" +
+                "and sample_points.distance < %f \n" +
+                "and sample_points.%s > %f \n" +
+                "and sample_points.%s < %f;";
+        sql = String.format(
+                sql, rectangle, GeoUtil.srid,
+                GeoUtil.samplePointMaxDistance,
+                soilNutrientEnum, soilNutrientEnum.leftRange,
+                soilNutrientEnum, soilNutrientEnum.rightRange
+        );
+        return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> rs.getInt("num"));
+    }
+
     private Integer countPoints(UUID landID, double distance, SoilNutrientEnum soilNutrientEnum){
         String sql = "with land_buffer as (\n" +
                 "\tSELECT ST_Buffer(geom, %f) as land \n" +
@@ -131,6 +177,27 @@ public class LandService {
             soilNutrientEnum, soilNutrientEnum.rightRange
         );
         return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> rs.getInt("num"));
+    }
+
+    public double calMaxDistance(RectangleSearcher.Rectangle rectangle, double predictDistance, int pointsNum){
+        /* 每个指标选择200个有效点 */
+        double maxDistance = 0;/* 各指标的有效率相差不多，只取距离最大的指标以简化代码设计 */
+        for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
+            double testDistance = predictDistance;
+            while(true){
+                Integer num = this.countPoints(rectangle.bufferFromCenter(testDistance), soilNutrientEnum);
+                if(num < pointsNum){
+                    /* 增加1000米 */
+                    testDistance += 1000;
+                }else{
+                    break;
+                }
+            }
+            if(testDistance > maxDistance){
+                maxDistance = testDistance;
+            }
+        }
+        return maxDistance;
     }
 
     public double calMaxDistance(UUID landID, double predictDistance, int pointsNum){

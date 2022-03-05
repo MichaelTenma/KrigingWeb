@@ -1,12 +1,12 @@
 distributor:
   enable: true
   undoneTaskLimitPerInterpolater: 10
-  currentNumber: 6
+  currentNumber: 2
   timeoutMinutes: 15
 
 interpolater:
   enable: true
-  currentNumber: 2
+  currentNumber: 6
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 300
@@ -14,7 +14,7 @@ interpolater:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ctpf
+    url: jdbc:postgresql://localhost:5432/ctpf2
     username: postgres
     password: w.w1w+
     driver-class-name: org.postgresql.Driver

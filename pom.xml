@@ -91,6 +91,7 @@
             <artifactId>JSAT</artifactId>
             <version>0.0.9</version>
         </dependency>
+
     </dependencies>
 
     <build>

@@ -21,6 +21,7 @@ class TaskGenerator implements StatusManage {
     private final RectangleSearcher rectangleSearcher;
 
     private final LandService landService;
+    private final SamplePointService samplePointService;
 
     @Setter
     private DoneHandler doneHandler;
@@ -31,11 +32,12 @@ class TaskGenerator implements StatusManage {
     }
 
     public TaskGenerator(
-        TaskStore taskStore, LandService landService, ExecutorService executorService
-    ) {
+            TaskStore taskStore, LandService landService, ExecutorService executorService,
+            SamplePointService samplePointService) {
         this.taskStore = taskStore;
         this.rectangleSearcher = new RectangleSearcher(executorService);
         this.landService = landService;
+        this.samplePointService = samplePointService;
     }
 
     /**
@@ -43,46 +45,65 @@ class TaskGenerator implements StatusManage {
      * @return True表示完成所有矩形框的搜索工作，False表示搜索过程中由于某些情况而中止
      */
     private void search(){
+//        CompletableFuture<RectangleSearcher.BooleanObject> completableFuture =
+//            this.rectangleSearcher.search((RectangleSearcher.Rectangle rectangle) -> {
+//                /* 根据矩形框随机选择一个未插值地块 */
+//                UUID landID = this.landService.getRandomLand(rectangle);
+//                if(landID != null){
+//                    final int pointsNum = 300;
+//                    /* 向外扩展选择约有350个点（一般来说应该多选一些点） */
+//                    Double predictDistance = this.landService.predictBufferDistance(
+//                        landID, 10000, pointsNum + 150
+//                    );
+//
+//                    if(predictDistance != null){
+//                        /* 每个指标选择350个有效点 */
+//                        double maxDistance = this.landService.calMaxDistance(landID, predictDistance, pointsNum);
+//
+//                        /* 取采样点 */
+//                        List<SamplePointEntity> samplePointEntityList =
+//                                this.landService.getSamplePointEntityList(landID, maxDistance);
+//
+//                        /* 生成各指标有效点构成的最小凸包多边形 */
+//                        /* 各指标有效点构成的最小凹多边形实际上是很类似的，同时有效点是随机分布的，取最大距离构成的缓冲区即可
+//                         * 若确实害怕无效点聚集在边界部分，则将最大距离缩小1/10避免选择的地块超出有效点内部范围
+//                         */
+//                        Geometry convexHull = SamplePointService.getConvexHull(samplePointEntityList);
+//
+//                        /* 根据最长距离的1/10生成缓冲区 */
+//                        double correctDistance = -maxDistance * 0.65;
+//                        Geometry buffer = convexHull.buffer(correctDistance);
+//                        List<LandEntity> landEntityList = this.landService.list(buffer, InterpolatedStatusEnum.UnStart);
+//                        this.landService.markPrepareInterpolated(landEntityList);
+//
+//                        TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
+//                        this.taskStore.addTask(taskData);
+//
+//        //                    /* 各指标缓冲区求交集，得最小缓冲区 */
+//        //                    /* 查找最小缓冲区内的地块，务必保证缓冲区内至少有一个地块 */
+//                    }
+//                }
+//            });
+
         CompletableFuture<RectangleSearcher.BooleanObject> completableFuture =
             this.rectangleSearcher.search((RectangleSearcher.Rectangle rectangle) -> {
-                /* 根据矩形框随机选择一个未插值地块 */
-                UUID landID = this.landService.getRandomLand(rectangle);
-                if(landID != null){
-                    final int pointsNum = 300;
-                    /* 向外扩展选择约有350个点（一般来说应该多选一些点） */
+                /* 取出当前矩形内所有未插值的地块 */
+                List<LandEntity> landEntityList = this.landService.list(rectangle, InterpolatedStatusEnum.UnStart);
+                if(landEntityList != null && landEntityList.size() > 0){
+                    final int pointsNum = 200;
                     Double predictDistance = this.landService.predictBufferDistance(
-                        landID, 10000, pointsNum + 150
+                        rectangle, 10000, pointsNum + 100
                     );
-
-                    if(predictDistance != null){
-                        /* 每个指标选择350个有效点 */
-                        double maxDistance = this.landService.calMaxDistance(landID, predictDistance, pointsNum);
-
-                        /* 取采样点 */
-                        List<SamplePointEntity> samplePointEntityList =
-                                this.landService.getSamplePointEntityList(landID, maxDistance);
-
-                        /* 生成各指标有效点构成的最小凸包多边形 */
-                        /* 各指标有效点构成的最小凹多边形实际上是很类似的，同时有效点是随机分布的，取最大距离构成的缓冲区即可
-                         * 若确实害怕无效点聚集在边界部分，则将最大距离缩小1/10避免选择的地块超出有效点内部范围
-                         */
-                        Geometry convexHull = SamplePointService.getConvexHull(samplePointEntityList);
-
-                        /* 根据最长距离的1/10生成缓冲区 */
-                        double correctDistance = -maxDistance * 0.65;
-                        Geometry buffer = convexHull.buffer(correctDistance);
-                        List<LandEntity> landEntityList = this.landService.list(buffer, InterpolatedStatusEnum.UnStart);
-                        this.landService.markPrepareInterpolated(landEntityList);
-
+                    double maxDistance = this.landService.calMaxDistance(rectangle, predictDistance, pointsNum);
+                    List<SamplePointEntity> samplePointEntityList =
+                            this.samplePointService.list(rectangle.bufferFromCenter(maxDistance));
+                    if(samplePointEntityList != null && samplePointEntityList.size() > 0){
                         TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
+                        this.landService.markPrepareInterpolated(landEntityList);
                         this.taskStore.addTask(taskData);
-
-        //                    /* 各指标缓冲区求交集，得最小缓冲区 */
-        //                    /* 查找最小缓冲区内的地块，务必保证缓冲区内至少有一个地块 */
                     }
                 }
             });
-
         completableFuture.thenAccept(booleanObject -> {
             if(booleanObject.isValue()){
                 /* done callback */

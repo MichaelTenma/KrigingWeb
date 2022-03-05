@@ -50,10 +50,24 @@ public class TaskData  {
         this.samplePointEntityList = null;
     }
 
+    public String errorMapToString(){
+        StringBuilder sb = new StringBuilder();
+        for(Map.Entry<SoilNutrientEnum, ErrorInfo> entry : this.errorMap.entrySet()){
+            sb.append(entry.getKey() + ": " + entry.getValue()).append(",");
+        }
+        sb.setCharAt(sb.length() - 1, ' ');
+        return sb.toString();
+    }
+
     @Getter
     @AllArgsConstructor
     public static class ErrorInfo{
         private final ErrorEntity trainError;
         private final ErrorEntity testError;
+
+        @Override
+        public String toString(){
+            return String.format("{trainError: %s, testError: %s}", trainError, testError);
+        }
     }
 }

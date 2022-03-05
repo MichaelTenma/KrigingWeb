@@ -21,8 +21,8 @@ public class RectangleSearcher implements StatusManage {
     private static final double y_min = 2301216.219071 - bias;
     private static final double y_max = 2939884.095192 + bias;
 
-    private static final int rowNum = 30;// N
-    private static final int colNum = 20;// M
+    private static final int rowNum = 40;// N
+    private static final int colNum = 32;// M
 
     /* 向上取整，避免由于双精度浮点运算带来的舍入误差而导致某些地块不被涵盖在矩形框内 */
     private static final double x_gap = Math.ceil((x_max - x_min) / colNum);
@@ -56,6 +56,30 @@ public class RectangleSearcher implements StatusManage {
                     new Coordinate(left, top),
                     new Coordinate(left, bottom)
                 }
+            );
+        }
+
+        public double getArea(){
+            return (this.right - this.left) * (this.top - this.bottom);
+        }
+
+        public Rectangle buffer(double distance){
+            return new Rectangle(
+                this.left - distance,
+                this.right + distance,
+                this.top + distance,
+                this.bottom - distance
+            );
+        }
+
+        public Rectangle bufferFromCenter(double distance){
+            double x_center = (this.right - this.left) / 2 + this.left;
+            double y_center = (this.top - this.bottom) / 2 + this.bottom;
+            return new Rectangle(
+                x_center - distance,
+                x_center + distance,
+                y_center + distance,
+                y_center - distance
             );
         }
 
@@ -182,3 +206,4 @@ public class RectangleSearcher implements StatusManage {
     }
 
 }
+
