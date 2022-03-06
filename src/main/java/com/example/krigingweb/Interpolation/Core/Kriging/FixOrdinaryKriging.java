@@ -93,7 +93,7 @@ public class FixOrdinaryKriging implements Regressor, Parameterized {
     {
         Vec x = data.getNumericalValues();
         if(this.firstOriginalVec != null){
-            x.mutableSubtract(firstOriginalVec);
+            x = x.subtract(firstOriginalVec);
         }
 
         int npt = X.length()-1;
@@ -108,7 +108,7 @@ public class FixOrdinaryKriging implements Regressor, Parameterized {
     @Override
     public void train(RegressionDataSet dataSet, ExecutorService threadPool)
     {
-
+        dataSet = dataSet.shallowClone();
         if(this.firstOriginalVec == null){
             this.firstOriginalVec = dataSet.getDataPoints().get(0).getNumericalValues().clone();
         }

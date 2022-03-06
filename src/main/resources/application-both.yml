@@ -1,12 +1,12 @@
 distributor:
   enable: true
   undoneTaskLimitPerInterpolater: 10
-  currentNumber: 2
+  currentNumber: 1
   timeoutMinutes: 15
 
 interpolater:
   enable: true
-  currentNumber: 6
+  currentNumber: 1
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 300
