@@ -31,6 +31,15 @@ class InterpolaterStore {
     public InterpolaterStore(UndoneTaskManager undoneTaskManager, DistributorProperties distributorProperties) {
         this.undoneTaskManager = undoneTaskManager;
         this.distributorProperties = distributorProperties;
+
+        this.undoneTaskManager.addWhenDone(() -> {
+            this.totalUndoneTaskLimitLock.lock();
+            if(this.undoneTaskManager.getCount() <= this.totalUndoneTaskLimit.get()){
+                this.totalUndoneTaskLimitCondition.signal();
+            }
+            this.totalUndoneTaskLimitLock.unlock();
+
+        });
     }
 
     public int registerInterpolater(UUID interpolaterID, String url){
@@ -62,8 +71,6 @@ class InterpolaterStore {
         try {
             if(this.undoneTaskManager.getCount() > this.totalUndoneTaskLimit.get()){
                 this.totalUndoneTaskLimitCondition.await();
-            }else{
-                this.totalUndoneTaskLimitCondition.signalAll();
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

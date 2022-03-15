@@ -62,6 +62,8 @@ class TaskInterpolater {
             List<LandEntity> landEntityList = InterpolaterUtil.interpolate(
                 taskData, this.cellSize, this.maxInvalidNum, 200
             );
+
+            landEntityList.forEach(landEntity -> landEntity.setMultiPolygon(null));
             taskData.update(landEntityList);
             this.taskRebacker.reback(taskData);
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {

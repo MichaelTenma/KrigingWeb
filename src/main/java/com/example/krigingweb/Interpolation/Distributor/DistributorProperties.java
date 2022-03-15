@@ -21,6 +21,8 @@ public class DistributorProperties {
     @Value(value = "${distributor.currentNumber}")
     private int currentNumber = 1;
 
+    public static final int gapNum = 1;
+
     @Autowired
     public DistributorProperties(){}
 

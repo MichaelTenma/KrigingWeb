@@ -112,7 +112,7 @@ public class InterpolaterUtil {
         for(LandEntity landEntity : landEntityList){
             interpolate(landEntity, interpolationTaskMap, cellSize, soilNutrientEnumArray);
             if(!landEntity.couldBeUpdate()){
-//                maxInvalidNum --;
+                maxInvalidNum --;
                 if(maxInvalidNum < 0) throw new MaxInvalidNutrientValueNumException();
             }
         }

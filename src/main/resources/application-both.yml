@@ -1,15 +1,15 @@
 distributor:
   enable: true
   undoneTaskLimitPerInterpolater: 10
-  currentNumber: 1
-  timeoutMinutes: 15
+  currentNumber: 2
+  timeoutMinutes: 5
 
 interpolater:
   enable: true
-  currentNumber: 1
+  currentNumber: 7
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
-  cellSize: 300
+  cellSize: 30
   maxInvalidNum: 3
 
 spring:

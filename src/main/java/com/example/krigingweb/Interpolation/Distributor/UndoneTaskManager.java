@@ -5,9 +5,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.time.ZonedDateTime;
-import java.util.Map;
-import java.util.Queue;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,8 +22,30 @@ class UndoneTaskManager {
 
     private final DistributorProperties distributorProperties;
 
+    private final List<WhenDoneHandler> whenDoneHandlerList;
+
+    @FunctionalInterface
+    public interface WhenDoneHandler {
+        void handle();
+    }
+
+    public void addWhenDone(WhenDoneHandler whenDoneHandler){
+        this.whenDoneHandlerList.add(whenDoneHandler);
+    }
+
+    public void deleteWhenDone(WhenDoneHandler whenDoneHandler){
+        this.whenDoneHandlerList.remove(whenDoneHandler);
+    }
+
+    public void invokeWhenDone(){
+        for(WhenDoneHandler whenDoneHandler : this.whenDoneHandlerList){
+            whenDoneHandler.handle();
+        }
+    }
+
     UndoneTaskManager(DistributorProperties distributorProperties) {
         this.distributorProperties = distributorProperties;
+        this.whenDoneHandlerList = new LinkedList<>();
     }
 
     @FunctionalInterface
@@ -40,7 +60,12 @@ class UndoneTaskManager {
     }
 
     public TaskData doneTask(UUID taskID){
+        this.invokeWhenDone();
         return this.removeTask(taskID);
+    }
+
+    public TaskData getUndoneTask(UUID taskID){
+        return this.undoneTaskMap.get(taskID);
     }
 
     private TaskData removeTask(UUID taskID){
@@ -49,8 +74,8 @@ class UndoneTaskManager {
         return this.undoneTaskMap.remove(taskID);
     }
 
-    @Scheduled(initialDelay = 10 * 60 * 1000, fixedDelay = 5 * 60 * 1000)
-    private void timeout(){
+    @Scheduled(initialDelay = 5 * 60 * 1000, fixedDelay = 2 * 60 * 1000)
+    public void timeout(){
         log.info("[UNDONE TASK TIMEOUT]: check timeout.");
         ZonedDateTime boundZonedDateTime = ZonedDateTime.now().minusMinutes(
             this.distributorProperties.getTimeoutMinutes()

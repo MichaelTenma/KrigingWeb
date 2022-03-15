@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class TaskStore {
-    private static final int gapNum = 3;
     private final Queue<TaskData> data;
     private final AtomicInteger count;
 
@@ -20,9 +19,9 @@ class TaskStore {
 
     public void addTask(TaskData taskData){
         this.data.add(taskData);
-        if(this.count.addAndGet(1) == gapNum){
+        if(this.count.addAndGet(1) == DistributorProperties.gapNum){
             this.count.set(0);
-            this.commit(gapNum);
+            this.commit(DistributorProperties.gapNum);
         }
     }
 

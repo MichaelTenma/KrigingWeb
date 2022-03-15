@@ -23,6 +23,8 @@ class TaskGenerator implements StatusManage {
     private final LandService landService;
     private final SamplePointService samplePointService;
 
+    private final ExecutorService executorService;
+
     @Setter
     private DoneHandler doneHandler;
 
@@ -32,8 +34,11 @@ class TaskGenerator implements StatusManage {
     }
 
     public TaskGenerator(
-            TaskStore taskStore, LandService landService, ExecutorService executorService,
-            SamplePointService samplePointService) {
+        TaskStore taskStore, LandService landService, ExecutorService executorService,
+        SamplePointService samplePointService
+    ) {
+
+        this.executorService = executorService;
         this.taskStore = taskStore;
         this.rectangleSearcher = new RectangleSearcher(executorService);
         this.landService = landService;
@@ -85,35 +90,37 @@ class TaskGenerator implements StatusManage {
 //                }
 //            });
 
-        CompletableFuture<RectangleSearcher.BooleanObject> completableFuture =
-            this.rectangleSearcher.search((RectangleSearcher.Rectangle rectangle) -> {
-                /* 取出当前矩形内所有未插值的地块 */
-                List<LandEntity> landEntityList = this.landService.list(rectangle, InterpolatedStatusEnum.UnStart);
-                if(landEntityList != null && landEntityList.size() > 0){
-                    final int pointsNum = 200;
-                    Double predictDistance = this.landService.predictBufferDistance(
+
+        RectangleSearcher.LandSearcher landSearcher = (RectangleSearcher.Rectangle rectangle) -> {
+            /* 取出当前矩形内所有未插值的地块 */
+            List<LandEntity> landEntityList = this.landService.list(rectangle, InterpolatedStatusEnum.UnStart);
+            if(landEntityList != null && landEntityList.size() > 0){
+                final int pointsNum = 200;
+                Double predictDistance = this.landService.predictBufferDistance(
                         rectangle, 10000, pointsNum + 100
-                    );
-                    double maxDistance = this.landService.calMaxDistance(rectangle, predictDistance, pointsNum);
-                    List<SamplePointEntity> samplePointEntityList =
-                            this.samplePointService.list(rectangle.bufferFromCenter(maxDistance));
-                    if(samplePointEntityList != null && samplePointEntityList.size() > 0){
-                        TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
-                        this.landService.markPrepareInterpolated(landEntityList);
-                        this.taskStore.addTask(taskData);
+                );
+                double maxDistance = this.landService.calMaxDistance(rectangle, predictDistance, pointsNum);
+                List<SamplePointEntity> samplePointEntityList =
+                        this.samplePointService.list(rectangle.bufferFromCenter(maxDistance));
+                if(samplePointEntityList != null && samplePointEntityList.size() > 0){
+                    TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
+                    this.landService.markPrepareInterpolated(landEntityList);
+                    this.taskStore.addTask(taskData);
+                }
+            }
+        };
+
+        this.rectangleSearcher.search(landSearcher)
+            .thenAccept(booleanObject -> {
+                if(booleanObject.isValue()){
+                    /* done callback */
+                    if(this.doneHandler != null){
+                        this.taskStore.commitRest();
+                        this.rectangleSearcher.reset();
+                        this.doneHandler.done();
                     }
-                }
+                }else{}
             });
-        completableFuture.thenAccept(booleanObject -> {
-            if(booleanObject.isValue()){
-                /* done callback */
-                if(this.doneHandler != null){
-                    this.taskStore.commitRest();
-                    this.rectangleSearcher.reset();
-                    this.doneHandler.done();
-                }
-            }else{}
-        });
     }
 
     /**

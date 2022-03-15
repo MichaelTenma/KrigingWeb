@@ -3,5 +3,5 @@ interpolater:
   currentNumber: 8
   distributorURL: http://192.168.1.241:8099
   callbackHttpEnum: http
-  cellSize: 300
+  cellSize: 30
   maxInvalidNum: 3

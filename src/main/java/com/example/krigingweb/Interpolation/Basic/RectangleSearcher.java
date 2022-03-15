@@ -8,6 +8,10 @@ import org.locationtech.jts.geom.Polygon;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class RectangleSearcher implements StatusManage {
     /**
@@ -21,8 +25,8 @@ public class RectangleSearcher implements StatusManage {
     private static final double y_min = 2301216.219071 - bias;
     private static final double y_max = 2939884.095192 + bias;
 
-    private static final int rowNum = 40;// N
-    private static final int colNum = 32;// M
+    private static final int rowNum = 128;// N
+    private static final int colNum = 64;// M
 
     /* 向上取整，避免由于双精度浮点运算带来的舍入误差而导致某些地块不被涵盖在矩形框内 */
     private static final double x_gap = Math.ceil((x_max - x_min) / colNum);
@@ -149,6 +153,7 @@ public class RectangleSearcher implements StatusManage {
     public void reset(){
         this.beginRow = 0;
         this.beginCol = 0;
+        this.currentCount.set(0);
         this.stop();
     }
 
@@ -160,6 +165,11 @@ public class RectangleSearcher implements StatusManage {
         }
     }
 
+
+    private final AtomicInteger currentCount = new AtomicInteger(0);
+    private final int limitCount = 10;
+    private final Lock limitCountLock = new ReentrantLock();
+    private final Condition limitCountLockCondition = this.limitCountLock.newCondition();
     /**
      * 将广东省切分成多份，逐份搜索
      * @param landSearcher 地块搜索器，编写与数据库耦合的代码
@@ -187,8 +197,23 @@ public class RectangleSearcher implements StatusManage {
 
                 final int finalRow = row;
                 final int finalCol = col;
-                this.executorService.submit(() -> {
+
+                if(this.currentCount.get() > this.limitCount){
+                    this.limitCountLock.lock();
+                    this.limitCountLockCondition.awaitUninterruptibly();
+                    this.limitCountLock.unlock();
+                }
+
+                /* 超过限度阻塞 */
+                this.currentCount.incrementAndGet();
+                this.executorService.execute(() -> {
                     landSearcher.search(this.createRectangle(finalRow, finalCol));
+
+                    this.limitCountLock.lock();
+                    this.currentCount.decrementAndGet();
+                    this.limitCountLockCondition.signal();
+                    this.limitCountLock.unlock();
+
                     if(
                         finalCol == RectangleSearcher.colNum - 1 &&
                         finalRow == RectangleSearcher.rowNum - 1

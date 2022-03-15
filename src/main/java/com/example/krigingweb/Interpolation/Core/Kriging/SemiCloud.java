@@ -1,10 +1,8 @@
 package com.example.krigingweb.Interpolation.Core.Kriging;
 
-import com.example.krigingweb.Math.MathUtil;
 import jsat.classifiers.DataPoint;
 import jsat.classifiers.DataPointPair;
 import jsat.regression.RegressionDataSet;
-
 import java.util.*;
 
 public class SemiCloud<V extends VariogramPredictor> {
@@ -16,7 +14,11 @@ public class SemiCloud<V extends VariogramPredictor> {
     private final double lagDistance;/* 滞后距离 */
 
     private final V variogramPredictor;
-    public SemiCloud(RegressionDataSet originalDataSet, double lag, double lagDistance, V variogramPredictor) {
+    public SemiCloud(
+        RegressionDataSet originalDataSet,
+        double lag, double lagDistance,
+        V variogramPredictor
+    ) {
         this.originalDataSet = originalDataSet;
         this.lag = lag;
         this.lagDistance = lagDistance;

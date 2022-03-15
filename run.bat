@@ -1,0 +1,1 @@
+java -jar ./target/krigingweb-0.0.1-SNAPSHOT.jar -Xmx64000m -XX:MetaspaceSize=64000m -XX:MaxMetaspaceSize=64000m -Xss2m

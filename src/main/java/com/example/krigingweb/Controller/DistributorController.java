@@ -1,6 +1,5 @@
 package com.example.krigingweb.Controller;
 
-import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Exception.EmptyException;
 import com.example.krigingweb.Exception.EmptyIPException;
 import com.example.krigingweb.Exception.EmptyListException;
@@ -84,6 +83,7 @@ public class DistributorController {
     public ResponseEntity<Map<UUID, String>> showInterpolaterURLMap(){
         return new ResponseEntity<>(this.distributorManager.getInterpolaterURLMap(), HttpStatus.OK);
     }
+
 
     @GetMapping("/start")
     public ResponseEntity<String> start(){

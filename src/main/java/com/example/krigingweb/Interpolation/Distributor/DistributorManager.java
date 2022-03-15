@@ -5,7 +5,6 @@ import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestTemplate;
 import java.util.List;
@@ -29,9 +28,9 @@ public class DistributorManager {
     private final DistributorProperties distributorProperties;
 
     public DistributorManager(
-        ExecutorService executorService, RestTemplate restTemplate,
-        LandService landService, DistributorProperties distributorProperties,
-        SamplePointService samplePointService
+            ExecutorService executorService, RestTemplate restTemplate,
+            LandService landService, DistributorProperties distributorProperties,
+            SamplePointService samplePointService
     ) {
         this.executorService = executorService;
         this.distributorProperties = distributorProperties;
@@ -73,8 +72,14 @@ public class DistributorManager {
      * @return 整个插值任务花费的秒数
      */
     public DoneTaskStatus doneTask(UUID taskID, List<LandEntity> landEntityList){
-        TaskData taskData = this.undoneTaskManager.doneTask(taskID);
-        this.taskUpdater.update(landEntityList);
+        TaskData taskData = this.undoneTaskManager.getUndoneTask(taskID);
+        /* 注意死锁 */
+        this.undoneTaskManager.doneTask(taskID);
+        this.executorService.execute(
+            () -> {
+                this.taskUpdater.update(landEntityList);
+            }
+        );
         return new DoneTaskStatus(taskData);
     }
 
@@ -100,10 +105,8 @@ public class DistributorManager {
     public void start(){
         if(this.distributorProperties.isEnable()){
             log.info("[DISTRIBUTOR]: start");
-            CompletableFuture.supplyAsync(() -> {
-                this.taskGenerator.start();
-                return null;
-            }, this.executorService);
+            CompletableFuture.runAsync(this.taskGenerator::start);
+//            this.executorService.execute(this.taskGenerator::start);
         }
     }
 
