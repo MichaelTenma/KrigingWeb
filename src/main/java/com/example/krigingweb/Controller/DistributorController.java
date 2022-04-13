@@ -64,7 +64,7 @@ public class DistributorController {
         DoneTaskStatus doneTaskStatus = this.distributorManager.doneTask(
             doneTaskRequest.taskID, doneTaskRequest.landEntityList
         );
-        log.info("[DONE TASK]: " + doneTaskStatus);
+//        log.info("[DONE TASK]: " + doneTaskStatus);
         return new ResponseEntity<>(doneTaskStatus, HttpStatus.OK);
     }
 

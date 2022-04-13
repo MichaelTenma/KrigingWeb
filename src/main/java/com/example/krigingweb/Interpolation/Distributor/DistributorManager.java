@@ -2,6 +2,7 @@ package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Interpolation.Core.TaskData;
+import com.example.krigingweb.Interpolation.Distributor.Exception.UpdateException;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
@@ -72,12 +73,28 @@ public class DistributorManager {
      * @return 整个插值任务花费的秒数
      */
     public DoneTaskStatus doneTask(UUID taskID, List<LandEntity> landEntityList){
-        TaskData taskData = this.undoneTaskManager.getUndoneTask(taskID);
         /* 注意死锁 */
-        this.undoneTaskManager.doneTask(taskID);
+        TaskData taskData = this.undoneTaskManager.doneTask(taskID);
         this.executorService.execute(
             () -> {
-                this.taskUpdater.update(landEntityList);
+                boolean isSuccess = true;
+                for(int i = 0; i < 5;i++){
+                    try {
+                        this.taskUpdater.update(landEntityList);
+                        isSuccess = true;
+                        break;/* 正常情况执行一次即退出 */
+                    } catch (UpdateException e) {
+                        log.warn("[DISTRIBUTOR]: 更新地块时发生异常！", e);
+                        isSuccess = false;
+                        Thread.yield();
+                    }
+                }
+                if(isSuccess){
+                    log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
+                }else{
+                    log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
+                    this.undoneTaskManager.addUndoneTask(taskData);
+                }
             }
         );
         return new DoneTaskStatus(taskData);

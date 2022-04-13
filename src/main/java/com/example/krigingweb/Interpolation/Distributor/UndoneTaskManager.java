@@ -64,9 +64,9 @@ class UndoneTaskManager {
         return this.removeTask(taskID);
     }
 
-    public TaskData getUndoneTask(UUID taskID){
-        return this.undoneTaskMap.get(taskID);
-    }
+//    public TaskData getUndoneTask(UUID taskID){
+//        return this.undoneTaskMap.get(taskID);
+//    }
 
     private TaskData removeTask(UUID taskID){
         this.undoneTaskQueue.remove(taskID);
