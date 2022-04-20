@@ -1,6 +1,6 @@
 interpolater:
   enable: true
-  currentNumber: 8
+  concurrentNumber: 8
   distributorURL: http://192.168.1.241:8099
   callbackHttpEnum: http
   cellSize: 30

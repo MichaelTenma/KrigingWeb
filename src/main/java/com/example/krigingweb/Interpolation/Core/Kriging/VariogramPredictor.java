@@ -6,9 +6,9 @@ public abstract class VariogramPredictor {
     protected double partialSill;
     protected double nugget;
 
-    public abstract double predict(double h, double range, double partialSill, double nugget);
+    public abstract double predict(double h);
 
-    protected abstract void OLS(int rangeIndex, double[] distanceArray, double[] semiArray);
+    protected abstract void OLS(int rangeIndex, final double[][] S);
 
     public double getRange(){
         return this.range;
@@ -20,5 +20,12 @@ public abstract class VariogramPredictor {
 
     public double getNugget(){
         return this.nugget;
+    }
+    public abstract VariogramPredictor clone();
+
+    public void update(VariogramPredictor variogramPredictor){
+        this.range = variogramPredictor.getRange();
+        this.partialSill = variogramPredictor.getPartialSill();
+        this.nugget = variogramPredictor.getNugget();
     }
 }

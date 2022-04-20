@@ -1,69 +1,123 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Entity.LandEntity;
+import com.example.krigingweb.Interpolation.Basic.Enum.StatusEnum;
+import com.example.krigingweb.Interpolation.Basic.HttpUtil;
+import com.example.krigingweb.Interpolation.Basic.StatusManage;
 import com.example.krigingweb.Interpolation.Core.TaskData;
-import com.example.krigingweb.Interpolation.Distributor.Exception.UpdateException;
+import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
+import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.AbstractTaskGenerator;
+import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.RectangleQuickBufferTaskGenerator;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
-public class DistributorManager {
-    private final TaskGenerator taskGenerator;
+public class DistributorManager implements StatusManage {
+
+    private final AbstractTaskGenerator taskGenerator;
     private final TaskStore taskStore;
-    private final TaskDistributor taskDistributor;
+    private final InterpolaterStore interpolaterStore;
+    private final UndoneTaskManager undoneTaskManager;
     private final TaskUpdater taskUpdater;
 
-    private final UndoneTaskManager undoneTaskManager;
-    private final InterpolaterStore interpolaterStore;
+    private final RestTemplate restTemplate;
 
-    private final ExecutorService executorService;
+    private final Queue<InterpolaterNode> readyQueue = new LinkedList<>();
+    private final Queue<InterpolaterNode> runningQueue = new LinkedList<>();
 
-    private final DistributorProperties distributorProperties;
+    private final ExecutorService daemonExecutorService;
+
+    private StatusEnum statusEnum = StatusEnum.Stop;
+    private final ReentrantLock statusOpLock = new ReentrantLock();
 
     public DistributorManager(
-            ExecutorService executorService, RestTemplate restTemplate,
-            LandService landService, DistributorProperties distributorProperties,
-            SamplePointService samplePointService
+        int totalTaskGeneratorThreadNumber, int totalTaskUpdaterThreadNumber,
+        LandService landService, SamplePointService samplePointService,
+        RestTemplate restTemplate
     ) {
-        this.executorService = executorService;
-        this.distributorProperties = distributorProperties;
-
-        this.undoneTaskManager = new UndoneTaskManager(distributorProperties);
-        this.interpolaterStore = new InterpolaterStore(this.undoneTaskManager, distributorProperties);
-
-        this.taskUpdater = new TaskUpdater(landService);
-
-        this.taskDistributor = new TaskDistributor(
-            this.undoneTaskManager, this.interpolaterStore,
-            restTemplate, executorService
+        this.restTemplate = restTemplate;
+        this.taskStore = new TaskStore(20);
+        this.taskGenerator = new RectangleQuickBufferTaskGenerator(
+            this.taskStore, totalTaskGeneratorThreadNumber,
+            landService, samplePointService
         );
-        this.taskStore = new TaskStore(this.taskDistributor);
-        this.taskGenerator = new TaskGenerator(this.taskStore, landService, executorService, samplePointService);
 
-        this.undoneTaskManager.setTimeoutHandler(this.taskStore::addTask);
-        this.taskGenerator.setDoneHandler(() -> {
-            if(landService.hasLandToInterpolate()){
-                this.start();
-//                this.stop();
-            }else{
-                /* 生成器任务完成，但不代表插值工作完成，还需要等待UndoneTask */
-                log.info("[DISTRIBUTOR]: task generator done. ");
+        ExecutorService taskGeneratorExecutorService = new ThreadPoolExecutor(
+            totalTaskGeneratorThreadNumber, totalTaskGeneratorThreadNumber,
+            0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+            new CustomizableThreadFactory("distributor-taskGenerator-")
+        );
+        for(int i = 0;i < totalTaskGeneratorThreadNumber;i++){
+            taskGeneratorExecutorService.execute(this.taskGenerator);
+        }
+
+        this.daemonExecutorService = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(), new CustomizableThreadFactory("distributor-daemon-")
+        );
+
+        this.interpolaterStore = new InterpolaterStore();
+        this.undoneTaskManager = new UndoneTaskManager();
+        this.taskUpdater = new TaskUpdater(totalTaskUpdaterThreadNumber, landService);
+    }
+
+    public void registerInterpolater(UUID interpolaterID, int maxTaskNumber, String url){
+        InterpolaterNode interpolaterNode = new InterpolaterNode(interpolaterID, maxTaskNumber, url);
+        this.interpolaterStore.registerInterpolater(interpolaterNode);
+        this.readyQueue.add(interpolaterNode);
+    }
+
+    public void deleteInterpolater(UUID interpolaterID){
+        this.interpolaterStore.deleteInterpolater(interpolaterID);
+    }
+
+    private void requestTask(){
+        /* 是否有任务，是否有空闲结点，若有则申请任务，否则进入下一轮等待 */
+        while(!this.readyQueue.isEmpty() && !this.taskStore.isEmpty()){
+            InterpolaterNode interpolaterNode = this.readyQueue.poll();
+            if(interpolaterNode == null) break;
+            if(!this.interpolaterStore.hasInterpolater(interpolaterNode.id)) continue;
+
+            while(!this.taskStore.isEmpty() && interpolaterNode.getRestTaskNumber() > 0){
+                interpolaterNode.addTask();
+                TaskData taskData = this.taskStore.requestTask();
+                taskData.belongInterpolaterID = interpolaterNode.id;
+                taskData.updatePostTime();
+
+                /* 发出任务 */
+                CompletableFuture.runAsync(() -> this.postTaskData(interpolaterNode.url, taskData));
+//                this.daemonExecutorService.execute(() -> this.postTaskData(interpolaterNode.url, taskData));
+                /* 待完成任务存储器 */
+                this.undoneTaskManager.addUndoneTask(taskData);
             }
-        });
 
-        this.taskDistributor.setInterpolaterExceptionHandler((interpolaterID, taskData) -> {
-            /* 尝试重传十次仍然失败，则认为该结点已经瘫痪 */
-            this.deleteInterpolater(interpolaterID);
-            this.taskStore.addTask(taskData);
-        });
+            if(!this.runningQueue.contains(interpolaterNode)) {
+                this.runningQueue.add(interpolaterNode);
+            }
+
+            if(interpolaterNode.getRestTaskNumber() > 0){
+                this.readyQueue.add(interpolaterNode);
+            }
+        }
+    }
+
+    private void postTaskData(String url, TaskData taskData){
+        HttpEntity<TaskData> httpEntity = new HttpEntity<>(taskData, HttpUtil.jsonHeaders);
+        this.restTemplate.postForEntity(url, httpEntity, String.class);
+    }
+
+    private void timeout(TaskData taskData){
+        this.taskStore.retryTask(taskData);
+        this.interpolaterStore.exception(taskData.belongInterpolaterID);
     }
 
     /**
@@ -73,61 +127,77 @@ public class DistributorManager {
      * @return 整个插值任务花费的秒数
      */
     public DoneTaskStatus doneTask(UUID taskID, List<LandEntity> landEntityList){
-        /* 注意死锁 */
         TaskData taskData = this.undoneTaskManager.doneTask(taskID);
-        this.executorService.execute(
-            () -> {
-                boolean isSuccess = true;
-                for(int i = 0; i < 5;i++){
-                    try {
-                        this.taskUpdater.update(landEntityList);
-                        isSuccess = true;
-                        break;/* 正常情况执行一次即退出 */
-                    } catch (UpdateException e) {
-                        log.warn("[DISTRIBUTOR]: 更新地块时发生异常！", e);
-                        isSuccess = false;
-                        Thread.yield();
-                    }
-                }
-                if(isSuccess){
-                    log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
-                }else{
-                    log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
-                    this.undoneTaskManager.addUndoneTask(taskData);
-                }
-            }
-        );
+        this.taskUpdater.update(landEntityList)
+            .thenAcceptAsync(isSuccess -> {
+                log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
+                InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
+                this.runningQueue.remove(interpolaterNode);
+                this.readyQueue.add(interpolaterNode);
+            })
+            .exceptionally(throwable -> {
+                log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
+                this.undoneTaskManager.addUndoneTask(taskData);
+                return null;
+            });
         return new DoneTaskStatus(taskData);
     }
 
-    public void registerInterpolater(UUID interpolaterID, String url) {
-        if(this.interpolaterStore.registerInterpolater(interpolaterID, url) > 0){
-            this.taskGenerator.resume();
+    @Override
+    public void doStart() {
+        if(statusEnum != StatusEnum.Run){
+            statusOpLock.lock();
+            statusEnum = StatusEnum.Run;
+            statusOpLock.unlock();
+            this.taskGenerator.doStart();
+
+            /* 单线程定时执行 */
+            this.daemonExecutorService.execute(() -> {
+                ReentrantLock timeLock = new ReentrantLock();
+                Condition timeLockCondition = timeLock.newCondition();
+                while(statusEnum == StatusEnum.Run){
+                    try {
+                        /* 随机休眠56~64s，数学期望为60s，避免同一时间内网络上存在过多的流量，达到错峰通信的目的 */
+                        timeLock.lock();
+                        timeLockCondition.await(
+                            6 * 1000 + new Random().nextLong() % 8000, TimeUnit.MILLISECONDS
+                        );/* 56s + [0, 8000) ms */
+                        timeLock.unlock();
+                    } catch (InterruptedException ignored) {}
+
+                    /* 超时检测 */
+                    this.undoneTaskManager.timeout(10, this::timeout);
+
+                    /* 任务调度 */
+                    this.requestTask();
+                }
+                log.warn("[distributor]: stop!");
+            });
         }
     }
 
-    public void deleteInterpolater(UUID interpolaterID) {
-        if(this.interpolaterStore.deleteInterpolater(interpolaterID) <= 0){
-            this.taskGenerator.pause();
-        }
+    @Override
+    public void doPause() {
+        statusOpLock.lock();
+        statusEnum = StatusEnum.Pause;
+        statusOpLock.unlock();
+        this.taskGenerator.doPause();
     }
 
-    public int countInterpolater(){
-        return this.interpolaterStore.count();
+    @Override
+    public void doResume() {
+        this.doStart();
     }
 
-    /**
-     * 一经开始，便只有完成全部地块的插值才能停止
-     */
-    public void start(){
-        if(this.distributorProperties.isEnable()){
-            log.info("[DISTRIBUTOR]: start");
-            CompletableFuture.runAsync(this.taskGenerator::start);
-//            this.executorService.execute(this.taskGenerator::start);
-        }
+    @Override
+    public void doStop() {
+        statusOpLock.lock();
+        statusEnum = StatusEnum.Stop;
+        statusOpLock.unlock();
+        this.taskGenerator.doStop();
     }
 
-    public Map<UUID, String> getInterpolaterURLMap(){
-        return this.interpolaterStore.getInterpolaterURLMap();
+    public Map<UUID, InterpolaterNode> getInterpolaterNodeMap(){
+        return this.interpolaterStore.getInterpolaterNodeMap();
     }
 }

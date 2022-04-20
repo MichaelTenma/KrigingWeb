@@ -14,15 +14,31 @@ import java.util.UUID;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class TaskData  {
     public UUID taskID;
+    public UUID belongInterpolaterID;
     private ZonedDateTime createTime;
+    private ZonedDateTime postTime;
     private List<SamplePointEntity> samplePointEntityList;
     private List<LandEntity> landEntityList;
 
     private Map<SoilNutrientEnum, ErrorInfo> errorMap;
     private VariogramPredictor variogramPredictor;
+
+    public TaskData(
+        UUID taskID, ZonedDateTime createTime,
+        List<SamplePointEntity> samplePointEntityList,
+        List<LandEntity> landEntityList,
+        Map<SoilNutrientEnum, ErrorInfo> errorMap,
+        VariogramPredictor variogramPredictor
+    ) {
+        this.taskID = taskID;
+        this.createTime = createTime;
+        this.samplePointEntityList = samplePointEntityList;
+        this.landEntityList = landEntityList;
+        this.errorMap = errorMap;
+        this.variogramPredictor = variogramPredictor;
+    }
 
     public TaskData(List<SamplePointEntity> samplePointEntityList, List<LandEntity> landEntityList) {
         this(
@@ -48,6 +64,14 @@ public class TaskData  {
     public void update(List<LandEntity> landEntityList){
         this.landEntityList = landEntityList;
         this.samplePointEntityList = null;
+    }
+
+    public void updatePostTime() {
+        this.postTime = ZonedDateTime.now();
+    }
+
+    public void updateCreateTime() {
+        this.createTime = ZonedDateTime.now();
     }
 
     public String errorMapToString(){

@@ -27,8 +27,7 @@ public class InterpolaterManager {
     private final InterpolaterProperties interpolaterProperties;
 
     public InterpolaterManager(
-        ExecutorService executorService, RestTemplate restTemplate,
-        InterpolaterProperties interpolaterProperties
+        RestTemplate restTemplate,InterpolaterProperties interpolaterProperties
     ) {
         this.interpolaterProperties = interpolaterProperties;
 
@@ -43,18 +42,13 @@ public class InterpolaterManager {
             }
         };
 
-        MaxInvalidNutrientValueNumException.Handler maxInvalidNutrientValueNumExceptionHandler = () -> {
-            log.warn("[INTERPOLATER]: 插值结果中具有过多的无效值！");
-        };
+//        MaxInvalidNutrientValueNumException.Handler maxInvalidNutrientValueNumExceptionHandler = () -> {
+//            log.warn("[INTERPOLATER]: 插值结果中具有过多的无效值！");
+//        };
         this.taskInterpolater = new TaskInterpolater(
-            executorService, this.taskRebacker,
-            this.interpolaterProperties.getCellSize(),
-            this.interpolaterProperties.getMaxInvalidNum(),
-            taskDataInterpolateExceptionHandler,
-            maxInvalidNutrientValueNumExceptionHandler
+            this.taskRebacker, this.interpolaterProperties.getCellSize(),
+            interpolaterProperties.getConcurrentNumber(), taskDataInterpolateExceptionHandler
         );
-
-//        this.taskBuffer = new TaskBuffer(this.taskInterpolater, executorService, taskDataInterpolateExceptionHandler, maxInvalidNutrientValueNumExceptionHandler);
         this.register();
     }
 
@@ -62,26 +56,25 @@ public class InterpolaterManager {
      * 向分派结点注册，请勿主动调用注册，该方法将在应用启动后十秒自动执行一次
      */
     private void register(){
-        for(int i = 0; i < this.interpolaterProperties.getCurrentNumber();i++){
-            CompletableFuture.supplyAsync(() -> {
-                try {
-                    Thread.yield();
-                    Thread.sleep(5000);
-                } catch (InterruptedException ignored) {
-                }
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.yield();
+                Thread.sleep(5000);
+            } catch (InterruptedException ignored) {}
 
-                RegisterRequest registerRequest = new RegisterRequest(
-                        this.interpolaterID, "/interpolater/addTask",
-                        this.interpolaterProperties.getPort(), this.interpolaterProperties.getCallbackHttpEnum()
-                );
-                HttpEntity httpEntity = new HttpEntity(registerRequest, HttpUtil.jsonHeaders);
+            RegisterRequest registerRequest = new RegisterRequest(
+                this.interpolaterID, "/interpolater/addTask",
+                this.interpolaterProperties.getPort(),
+                this.interpolaterProperties.getCallbackHttpEnum(),
+                this.interpolaterProperties.getConcurrentNumber()
+            );
+            HttpEntity<RegisterRequest> httpEntity = new HttpEntity<>(registerRequest, HttpUtil.jsonHeaders);
 
-                return this.restTemplate.postForEntity(
-                        this.interpolaterProperties.getDistributorURL() + "/distributor/register",
-                        httpEntity, String.class
-                );
-            });
-        }
+            this.restTemplate.postForEntity(
+                this.interpolaterProperties.getDistributorURL() + "/distributor/register",
+                httpEntity, String.class
+            );
+        });
     }
 
     public void addTask(TaskData taskData){

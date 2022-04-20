@@ -16,7 +16,6 @@ import java.util.concurrent.*;
 @Configuration
 public class InterpolaterConfig {
     private final RestTemplate restTemplate;
-    private final ExecutorService executorService;
 
     private final InterpolaterProperties interpolaterProperties;
 
@@ -24,19 +23,10 @@ public class InterpolaterConfig {
     public InterpolaterConfig(RestTemplate restTemplate, InterpolaterProperties interpolaterProperties) {
         this.restTemplate = restTemplate;
         this.interpolaterProperties = interpolaterProperties;
-
-        final int nThreads = this.interpolaterProperties.getCurrentNumber();
-        this.executorService = new ThreadPoolExecutor(
-            nThreads, nThreads, 0L,
-            TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
-            new CustomizableThreadFactory("interpolaterThread")
-        );
     }
 
     @Bean
     public InterpolaterManager interpolaterManager(){
-        return new InterpolaterManager(
-            this.executorService, this.restTemplate, this.interpolaterProperties
-        );
+        return new InterpolaterManager(this.restTemplate, this.interpolaterProperties);
     }
 }

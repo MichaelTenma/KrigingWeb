@@ -1,4 +1,4 @@
-package com.example.krigingweb.Interpolation.UpdateCore.Kriging;
+package com.example.krigingweb.Interpolation.Core.Kriging;
 
 import org.springframework.boot.test.context.SpringBootTest;
 

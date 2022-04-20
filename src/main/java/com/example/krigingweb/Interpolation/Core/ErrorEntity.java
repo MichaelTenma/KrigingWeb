@@ -6,15 +6,11 @@ import jsat.classifiers.DataPointPair;
 import jsat.regression.Regressor;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class ErrorEntity {
 
     @JsonProperty("MAE")
@@ -25,6 +21,11 @@ public class ErrorEntity {
     public ErrorEntity(double[] errorList){
         this.MAE = MathUtil.MAE(errorList);
         this.RMSE = MathUtil.RMSE(errorList);
+    }
+
+    public ErrorEntity(Double MAE, Double RMSE) {
+        this.MAE = MAE;
+        this.RMSE = RMSE;
     }
 
     public static double[] calError(List<DataPointPair<Double>> list, Regressor regressor){

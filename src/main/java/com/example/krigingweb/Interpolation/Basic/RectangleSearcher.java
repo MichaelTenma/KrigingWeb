@@ -133,18 +133,18 @@ public class RectangleSearcher implements StatusManage {
     private StatusEnum statusEnum = StatusEnum.Stop;
 
     @Override
-    public void start(){ this.statusEnum = StatusEnum.Run; }
+    public void doStart(){ this.statusEnum = StatusEnum.Run; }
 
     @Override
-    public void pause(){ this.statusEnum = StatusEnum.Pause; }
+    public void doPause(){ this.statusEnum = StatusEnum.Pause; }
 
     @Override
-    public void resume() {
-        this.start();
+    public void doResume() {
+        this.doStart();
     }
 
     @Override
-    public void stop(){ this.statusEnum = StatusEnum.Stop; }
+    public void doStop(){ this.statusEnum = StatusEnum.Stop; }
 
     public StatusEnum getStatusEnum() {
         return this.statusEnum;
@@ -154,7 +154,7 @@ public class RectangleSearcher implements StatusManage {
         this.beginRow = 0;
         this.beginCol = 0;
         this.currentCount.set(0);
-        this.stop();
+        this.doStop();
     }
 
     @Data

@@ -14,4 +14,5 @@ public class RegisterRequest {
     public String apiPath;
     public String port;
     public CallbackHttpEnum callbackHttpEnum;
+    public int maxTaskNumber;
 }

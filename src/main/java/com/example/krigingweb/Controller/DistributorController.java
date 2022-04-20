@@ -5,8 +5,9 @@ import com.example.krigingweb.Exception.EmptyIPException;
 import com.example.krigingweb.Exception.EmptyListException;
 import com.example.krigingweb.Interpolation.Basic.Enum.CallbackHttpEnum;
 import com.example.krigingweb.Interpolation.Basic.IPUtil;
-import com.example.krigingweb.Interpolation.Distributor.DistributorManager;
+import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
+import com.example.krigingweb.Interpolation.Distributor.DistributorManager;
 import com.example.krigingweb.Request.DoneTaskRequest;
 import com.example.krigingweb.Request.RegisterRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +47,7 @@ public class DistributorController {
         EmptyIPException.check(ip);
 
         String url = registerRequest.callbackHttpEnum + "://" + ip + ":" + registerRequest.port + registerRequest.apiPath;
-        this.distributorManager.registerInterpolater(registerRequest.interpolaterID, url);
+        this.distributorManager.registerInterpolater(registerRequest.interpolaterID, registerRequest.maxTaskNumber,url);
         log.info(
             "[REGISTER INTERPOLATER]: " +
             String.format("interpolaterID: %s, url: %s", registerRequest.interpolaterID, url)
@@ -80,14 +81,33 @@ public class DistributorController {
     }
 
     @GetMapping("/showInterpolaterURLMap")
-    public ResponseEntity<Map<UUID, String>> showInterpolaterURLMap(){
-        return new ResponseEntity<>(this.distributorManager.getInterpolaterURLMap(), HttpStatus.OK);
+    public ResponseEntity<Map<UUID, InterpolaterNode>> showInterpolaterURLMap(){
+        return new ResponseEntity<>(this.distributorManager.getInterpolaterNodeMap(), HttpStatus.OK);
     }
 
 
     @GetMapping("/start")
     public ResponseEntity<String> start(){
-        this.distributorManager.start();
+        this.distributorManager.doStart();
         return new ResponseEntity<>("start", HttpStatus.OK);
     }
+
+    @GetMapping("/pause")
+    public ResponseEntity<String> pause(){
+        this.distributorManager.doPause();
+        return new ResponseEntity<>("pause", HttpStatus.OK);
+    }
+
+    @GetMapping("/resume")
+    public ResponseEntity<String> resume(){
+        this.distributorManager.doResume();
+        return new ResponseEntity<>("resume", HttpStatus.OK);
+    }
+
+    @GetMapping("/stop")
+    public ResponseEntity<String> stop(){
+        this.distributorManager.doStop();
+        return new ResponseEntity<>("stop", HttpStatus.OK);
+    }
+
 }

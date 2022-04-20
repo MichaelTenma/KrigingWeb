@@ -4,40 +4,49 @@ import com.example.krigingweb.Interpolation.Core.TaskData;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
-class TaskStore {
+public class TaskStore {
     private final Queue<TaskData> data;
     private final AtomicInteger count;
 
-    private final TaskDistributor taskDistributor;
+    private final int maxCount;
+    private final ReentrantLock restLock = new ReentrantLock();
+    private final Condition restLockCondition = restLock.newCondition();
 
-    public TaskStore(TaskDistributor taskDistributor) {
-        this.taskDistributor = taskDistributor;
+    public TaskStore(int maxCount) {
         this.data = new ConcurrentLinkedQueue<>();
         this.count = new AtomicInteger(0);
+        this.maxCount = maxCount;
     }
 
     public void addTask(TaskData taskData){
+        if(this.count.getAndIncrement() >= this.maxCount){
+            /* block */
+            restLock.lock();
+            restLockCondition.awaitUninterruptibly();
+            restLock.unlock();
+        }
         this.data.add(taskData);
-        if(this.count.addAndGet(1) == DistributorProperties.gapNum){
-            this.count.set(0);
-            this.commit(DistributorProperties.gapNum);
-        }
     }
 
-    private void commit(final int num){
-        TaskData[] taskDataArray = new TaskData[num];
-        for(int i = 0; i < num;i++){
-            taskDataArray[i] = this.data.poll();
-        }
-        /* 分派任务到处理结点 */
-        this.taskDistributor.distribute(taskDataArray);
+    public void retryTask(TaskData taskData){
+        this.count.getAndIncrement();
+        this.data.add(taskData);
     }
 
-    public void commitRest(){
-        synchronized(this.data){
-            this.count.set(0);
-            this.commit(this.data.size());
+    public TaskData requestTask(){
+        if(this.count.decrementAndGet() > 0){
+            /* signal */
+            restLock.lock();
+            restLockCondition.signal();
+            restLock.unlock();
         }
+        return this.data.poll();
+    }
+
+    public boolean isEmpty(){
+        return this.count.get() <= 0;
     }
 }

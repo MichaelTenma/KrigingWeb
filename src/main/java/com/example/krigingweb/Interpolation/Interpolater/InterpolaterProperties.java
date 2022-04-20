@@ -23,8 +23,8 @@ public class InterpolaterProperties {
     @Value("${interpolater.enable}")
     private boolean enable = false;
 
-    @Value("${interpolater.currentNumber}")
-    private int currentNumber = 2;
+    @Value("${interpolater.concurrentNumber}")
+    private int concurrentNumber = 1;
 
     @Value("${interpolater.cellSize}")
     private double cellSize = 300;

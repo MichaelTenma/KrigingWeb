@@ -2,9 +2,9 @@ package com.example.krigingweb.Service;
 
 import com.example.krigingweb.Entity.RowMapper.SamplePointRowMapper;
 import com.example.krigingweb.Entity.SamplePointEntity;
-import com.example.krigingweb.Interpolation.Basic.RectangleSearcher;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
+import com.example.krigingweb.Interpolation.Distributor.Core.Rectangle;
 import jsat.classifiers.DataPointPair;
 import jsat.regression.RegressionDataSet;
 import lombok.SneakyThrows;
@@ -36,43 +36,13 @@ public class SamplePointService {
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 
-    public List<SamplePointEntity> list(RectangleSearcher.Rectangle rectangle){
+    public List<SamplePointEntity> list(Rectangle rectangle){
         String sql =
                 "select *, ST_AsText(geom) as point from sample_points \n" +
                 "where distance <= %f \n" +
                 "and ST_Intersects(geom, ST_geomFromText('%s', %d));";
         sql = String.format(sql, GeoUtil.samplePointMaxDistance, rectangle, GeoUtil.srid);
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
-    }
-
-    @SneakyThrows
-    public static RegressionDataSet[] samplePointToRegressionDataSet(
-        List<SamplePointEntity> samplePointEntityList, SoilNutrientEnum soilNutrientEnum
-    ) {
-        final double trainPercent = 0.9;
-        Method getSoilNutrientMethod = SamplePointEntity.class.getMethod("get" + soilNutrientEnum);
-
-        List<DataPointPair<Double>> trainList = new ArrayList<>((int) (samplePointEntityList.size() * trainPercent));
-        List<DataPointPair<Double>> testList = new ArrayList<>(samplePointEntityList.size() - trainList.size());
-
-        int i = 0;
-        for(SamplePointEntity samplePointEntity : samplePointEntityList){
-            i++;
-            double nutrient = (Double) getSoilNutrientMethod.invoke(samplePointEntity);
-            DataPointPair<Double> dataPointPair = new DataPointPair<>(
-                GeoUtil.buildDataPoint(samplePointEntity.getGeom()), nutrient
-            );
-            if(i <= samplePointEntityList.size() * trainPercent){
-                trainList.add(dataPointPair);
-            }else{
-                testList.add(dataPointPair);
-            }
-
-        }
-        return new RegressionDataSet[]{
-            RegressionDataSet.usingDPPList(trainList),
-            RegressionDataSet.usingDPPList(testList),
-        };
     }
 
     public static Geometry getConvexHull(List<SamplePointEntity> samplePointEntityList){

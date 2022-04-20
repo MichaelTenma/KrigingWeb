@@ -6,9 +6,9 @@
       "description": "单个插值结点最大的未完成插值任务数量。"
     },
     {
-      "name": "distributor.currentNumber",
+      "name": "interpolater.concurrentNumber",
       "type": "java.lang.Integer",
-      "description": "分派结点的并行线程数量。"
+      "description": "插值结点的并行线程数量。"
     },
     {
       "name": "distributor.enable",
@@ -31,11 +31,6 @@
       "description": "目标分派结点的链接。"
     },
     {
-      "name": "interpolater.currentNumber",
-      "type": "java.lang.Integer",
-      "description": "插值结点的并行线程数量。"
-    },
-    {
       "name": "interpolater.enable",
       "type": "java.lang.Boolean",
       "description": "用于标记是否启动插值结点。"
@@ -49,5 +44,15 @@
       "name": "interpolater.maxInvalidNum",
       "type": "java.lang.Integer",
       "description": "插值无效值的最大容忍数量，如：某地块某指标插值结果为NaN、Inf等即视为无效值。"
+    },
+    {
+      "name": "distributor.totalTaskUpdaterThreadNumber",
+      "type": "java.lang.Integer",
+      "description": "分派结点并行的更新线程数量。"
+    },
+    {
+      "name": "distributor.totalTaskGeneratorThreadNumber",
+      "type": "java.lang.Integer",
+      "description": "分派结点并行的任务生成线程数量。"
     }
   ] }

@@ -1,189 +1,117 @@
 package com.example.krigingweb.Interpolation.Core.Kriging;
 
-import jsat.classifiers.DataPoint;
-import jsat.classifiers.DataPointPair;
-import jsat.regression.RegressionDataSet;
-import java.util.*;
+import java.util.Arrays;
 
 public class SemiCloud<V extends VariogramPredictor> {
-    private final RegressionDataSet originalDataSet;
-    private double[] semiArray;
-    private double[] distanceArray;
+    private final int n;
+    private final double[][] S;
+    private final double[] L;
 
-    private final double lag;
-    private final double lagDistance;/* 滞后距离 */
+    public SemiCloud(double lag, double[][] u, double[] Z){
+        n = u.length;
+        L = new double[(n-1) * n / 2];
 
-    private final V variogramPredictor;
-    public SemiCloud(
-        RegressionDataSet originalDataSet,
-        double lag, double lagDistance,
-        V variogramPredictor
-    ) {
-        this.originalDataSet = originalDataSet;
-        this.lag = lag;
-        this.lagDistance = lagDistance;
-        this.variogramPredictor = variogramPredictor;
-
-        this.semiVariogram();
-    }
-
-    private void semiVariogram(){
-        Map<Double, List<Double>> map = new HashMap<>();
-
-        List<DataPointPair<Double>> list = this.originalDataSet.getAsDPPList();
-
-        for(int y = 0;y < list.size();y++){
-            DataPointPair<Double> A = list.get(y);
-            DataPoint dataPointA = A.getDataPoint();
-            double pairA = A.getPair();
-            for(int x = y + 1;x < list.size();x++){
-                DataPointPair<Double> B = list.get(x);
-                DataPoint dataPointB = B.getDataPoint();
-                double pairB = B.getPair();
-
-                double distance = dataPointA.getNumericalValues().pNormDist(2, dataPointB.getNumericalValues());
-                double diff = SemiCloud.squaredDifferences(pairA, pairB);
-
-                List<Double> entry = map.computeIfAbsent(distance, k -> new ArrayList<>());
-                entry.add(diff);
+        /* 任意设置一个 */
+        double minL = MathUtil.distance(u[0][0], u[0][1], u[2][0], u[2][1]);
+        double maxL = minL;
+        for(int k = 0;k < n - 1;k++){
+            for(int j = k + 1;j < n;j++){
+                double dis = MathUtil.distance(u[k][0], u[k][1], u[j][0], u[j][1]);
+                L[zipIndex(k, j)] = dis;
+                if(dis < minL) minL = dis;
+                if(dis > maxL) maxL = dis;
             }
         }
 
-        this.distanceArray = new double[ map.size() ];
-        this.semiArray = new double[ this.distanceArray.length ];
-        int index = 0;
-        for(Map.Entry<Double, List<Double>> entry : map.entrySet()){
-            double distance = entry.getKey();
-            List<Double> diffList = entry.getValue();
-            int N = diffList.size();
+        int group = (int)Math.ceil((maxL - minL) / lag);
 
-            double diff = 0;
-            for(double tempDiff : diffList){
-                diff += tempDiff;
+        double[] NArray = new double[group+1];
+        NArray[0] = n;
+        for(int k = 0;k < n - 1;k++){
+            for(int j = k + 1;j < n;j++){
+                int i = (int)Math.floor((L[zipIndex(k, j)] - minL)/lag) + 1;
+                NArray[i] += 1;
             }
-
-            double semi = diff / 2 / N;
-
-            this.distanceArray[index] = distance;
-            this.semiArray[index] = semi;
-            index++;
         }
 
-
-        GrouperResult grouperResult = Grouper.groupDistance(this.distanceArray, this.semiArray, this.lag, this.lagDistance);
-        this.distanceArray = grouperResult.distanceArray;
-        this.semiArray = grouperResult.semiArray;
-
-//        MathUtil.arrayToString("distance", this.distanceArray);
-//        MathUtil.arrayToString("semi", this.semiArray);
-    }
-
-    public V trainVariogram(){
-        int rangeIndex = this.calRangeIndex(this.distanceArray, this.semiArray);
-        this.variogramPredictor.OLS(rangeIndex, this.distanceArray, this.semiArray);
-        return this.variogramPredictor;
-    }
-
-    private int calRangeIndex(double[] distanceArray, double[] semiArray){
-        int beginRangeIndex = 0;
-        int endRangeIndex = distanceArray.length - 1;
-
-        int groupNum = 15;
-        while((endRangeIndex - beginRangeIndex) > 2){/* 若间隔为1，则说明左右端点相邻 */
-            final int length = (endRangeIndex - beginRangeIndex) + 1;
-            int groupStep = (int) Math.ceil(length * 1.0 / groupNum);/* 向上取整 */
-            if(groupStep < 1){/* 每组间隔至少为1步 */
-                groupStep = 1;
-                groupNum = length;
-            }
-
-            /* 计算每一组的RMSE，找出最小RMSE的变程点 */
-            double minRMSE = 0.0;
-            boolean firstFlag = true;
-
-            /* 用于记录最小RMSE变程点所在区间 */
-            int nextBeginRangeIndex = beginRangeIndex - groupStep;
-            int nextEndRangeIndex = beginRangeIndex + 2 * groupStep;
-
-            /* 用每一组中点RMSE作为该组的平均值 */
-            for(int leftRangeIndex = beginRangeIndex;leftRangeIndex < endRangeIndex;){
-                /* 当前组中点的距离 */
-                int rightRangeIndex = leftRangeIndex + groupStep;
-                /* 不能超越endRangeIndex */
-                if(rightRangeIndex > endRangeIndex) rightRangeIndex = endRangeIndex;
-
-                final int middleRangeIndex = (leftRangeIndex + rightRangeIndex) / 2;
-                this.variogramPredictor.OLS(middleRangeIndex, distanceArray, semiArray);
-
-                /* 变程点左侧RMSE */
-                double RMSE = this.loss(this.variogramPredictor);
-
-                if(firstFlag){
-                    minRMSE = RMSE;
-                    firstFlag = false;
-                }else if(RMSE < minRMSE){
-                    /* 找出最小RMSE的变程点 */
-                    minRMSE = RMSE;
-
-                    /* 最优变程点在minRMSE所在的区间，取相邻的区间，一共保留三个区间 */
-                    nextBeginRangeIndex = middleRangeIndex - groupStep;
-                    nextEndRangeIndex = middleRangeIndex + groupStep;
+        double[] semiArray = new double[group+1];
+        for(int k = 0;k < n - 1;k++){
+            for(int j = k + 1;j < n;j++){
+                double curL = L[zipIndex(k, j)];
+                int i = (int)Math.floor((curL - minL)/lag) + 1;
+                double h2 = minL + i * lag;
+                double h1 = h2 - lag;
+                if(curL > h1 && curL <= h2){
+                    semiArray[i] += Math.pow(Z[k] - Z[j], 2);
                 }
-                leftRangeIndex = rightRangeIndex;
             }
-
-            /* 更新探测区间 */
-            beginRangeIndex = nextBeginRangeIndex;
-            endRangeIndex = nextEndRangeIndex;
-
-            /* 避免越界 */
-            if(beginRangeIndex < 0) beginRangeIndex = 0;
-            if(endRangeIndex >= distanceArray.length) endRangeIndex = distanceArray.length - 1;
-
-        }
-        return (beginRangeIndex + endRangeIndex) / 2;
-    }
-
-    public double loss(V variogramPredictor){
-        return this.loss(
-            variogramPredictor.getRange(),
-            variogramPredictor.getPartialSill(),
-            variogramPredictor.getNugget()
-        );
-    }
-
-    public double loss(double range, double partialSill, double nugget){
-        return SemiCloud.loss(range, partialSill, nugget, this.distanceArray, this.semiArray, this.variogramPredictor);
-    }
-
-    private static double loss(
-        double range, double partialSill, double nugget,
-        double[] distanceArray, double[] semiArray,
-        VariogramPredictor variogramPredictor
-    ){
-        if(range < 0 || partialSill < 0 || nugget < 0){
-            return 999999999;/* 通过巨大的损失惩罚 */
         }
 
-        double g = 0;
-        for(int i = 0;i < distanceArray.length;i++){
-            double distance = distanceArray[i];
-            double realSemi = semiArray[i];
-            double predictSemi = variogramPredictor.predict(distance, range, partialSill, nugget);
 
-            g += Math.pow(predictSemi - realSemi, 2);
+        double[][] tmpS = new double[semiArray.length][2];
+        for(int i = 0;i < semiArray.length;i++){
+            semiArray[i] /= NArray[i];
+            tmpS[i][0] = minL + (i - 0.5)*lag;
+            tmpS[i][1] = semiArray[i];
         }
-        return Math.sqrt(g / distanceArray.length);
+        tmpS[0][0] = 0;
+        tmpS[0][1] = 0;
+
+        this.S = Arrays.copyOfRange(tmpS, 0, tmpS.length / 2 + 1);
+    }
+
+    protected int zipIndex(int k, int j){
+        return j - k + k*(2*n - 1 - k)/2 - 1;
     }
 
     /**
-     * 计算两点之间的指标值平方差异
-     * @param Zi i点的指标值
-     * @param Zj j点的指标值
-     * @return 平方差异
+     * @param variogramPredictor 用于拟合的变异模型，会被更新为误差最小的变异模型
+     * @return predictSemiMatrix 表示点间预测半变异矩阵，上三角压缩矩阵，不含对角线，
+     * 其对角线元素均为拟合得到的变异模型的块金，使用数组的最后一位存储块金，注意处理
      */
-    private static double squaredDifferences(double Zi, double Zj){
-        return Math.pow((Zi - Zj), 2);
+    public double[] fit(V variogramPredictor){
+        V minVariogramPredictor = variogramPredictor;
+        double minWeightedRMSE = Double.MAX_VALUE;
+        for(int i = 0;i < S.length;i++){
+            variogramPredictor.OLS(i, S);
+            /* weighted RMSE */
+            double weightedRMSE = 0;
+            for(int k = 0;k < S.length;k++){
+                double predict_semi = variogramPredictor.predict(S[k][0]);
+                double delta_semi = Math.pow(predict_semi - S[k][1], 2);
+                double weight = 1 - k * 1.0 / S.length;
+//                double weight = 1;
+                weightedRMSE += 2 * weight * delta_semi / (S.length + 1) / S.length;
+            }
+            weightedRMSE = Math.sqrt(weightedRMSE);
+            if(weightedRMSE < minWeightedRMSE){
+                minWeightedRMSE = weightedRMSE;
+                minVariogramPredictor = (V) variogramPredictor.clone();
+            }
+        }
+
+        double[] predictSemiMatrix = new double[L.length + 1];
+        for(int k = 0; k < predictSemiMatrix.length - 1; k++){
+            predictSemiMatrix[k] = minVariogramPredictor.predict(L[k]);
+        }
+        predictSemiMatrix[predictSemiMatrix.length - 1] = minVariogramPredictor.getNugget();
+
+        variogramPredictor.update(minVariogramPredictor);
+        return predictSemiMatrix;
     }
 
+    @Override
+    public String toString(){
+        StringBuilder hString = new StringBuilder("h = [");
+        StringBuilder semiString = new StringBuilder("semi = [");
+        for (double[] doubles : this.S) {
+            hString.append(doubles[0] + ',');
+            semiString.append(doubles[1] + ',');
+        }
+        hString.setCharAt(hString.length()-1,']');
+        semiString.setCharAt(semiString.length()-1,']');
+        hString.append(";\n");
+        semiString.append(";\n");
+        return hString.toString() + semiString;
+    }
 }
