@@ -5,7 +5,9 @@ import com.example.krigingweb.Interpolation.Core.InterpolaterUtil;
 import com.example.krigingweb.Interpolation.Interpolater.Exception.TaskDataInterpolateException;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
+import java.lang.ref.WeakReference;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
 class TaskInterpolater {
 
@@ -27,20 +29,27 @@ class TaskInterpolater {
         this.executorService = new ThreadPoolExecutor(
             concurrentNumber, concurrentNumber, 0L,
             TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
-            new CustomizableThreadFactory("interpolaterThread")
+            new CustomizableThreadFactory("interpolater-")
         );
     }
 
     public void addTask(TaskData taskData){
         if(taskData != null){
             /* 分派任务到处理结点 */
-            this.executorService.execute(() -> {
-                this.interpolate(taskData)
-                    .exceptionally(throwable -> {
-                        this.taskDataInterpolateExceptionHandler.handle(taskData);
-                        return null;
-                    });
+            /* lambda是一个匿名内部类，该匿名内部类被GCRoot引用，GCRoot -> lambda -> taskData无法释放故内存泄漏 */
+            CompletableFuture.runAsync(() -> {
+                this.interpolate(taskData).exceptionally(throwable -> {
+//                    throwable.printStackTrace();
+                    this.taskDataInterpolateExceptionHandler.handle(taskData);
+                    return null;
+                });
             });
+//            this.executorService.submit(() -> {
+//                this.interpolate(taskData).exceptionally(throwable -> {
+//                    this.taskDataInterpolateExceptionHandler.handle(taskData);
+//                    return null;
+//                });
+//            });
         }
     }
 
@@ -53,6 +62,7 @@ class TaskInterpolater {
                 this.taskRebacker.reback(taskData);
                 resCompletableFuture.complete(null);
             }).exceptionally(throwable -> {
+                throwable.printStackTrace();
                 resCompletableFuture.completeExceptionally(new TaskDataInterpolateException(taskData));
                 return null;
             });

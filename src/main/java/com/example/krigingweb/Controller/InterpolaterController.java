@@ -28,7 +28,11 @@ public class InterpolaterController {
         EmptyException.check("taskData", taskData);
 
         this.interpolaterManager.addTask(taskData);
-        log.info("[INTERPOLATER]: add task on " + this.interpolaterManager.interpolaterID + ". ");
+        log.info(
+            "[INTERPOLATER]: add task " + taskData.taskID +
+            ". SamplePoints: " + taskData.getSamplePointEntityList().size() +
+            ", LandEntities: " + taskData.getLandEntityList().size()
+        );
         return new ResponseEntity<>("添加插值任务成功！", HttpStatus.OK);
     }
 

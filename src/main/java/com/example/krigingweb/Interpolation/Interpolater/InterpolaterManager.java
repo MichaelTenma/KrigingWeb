@@ -66,7 +66,7 @@ public class InterpolaterManager {
                 this.interpolaterID, "/interpolater/addTask",
                 this.interpolaterProperties.getPort(),
                 this.interpolaterProperties.getCallbackHttpEnum(),
-                this.interpolaterProperties.getConcurrentNumber()
+                1
             );
             HttpEntity<RegisterRequest> httpEntity = new HttpEntity<>(registerRequest, HttpUtil.jsonHeaders);
 

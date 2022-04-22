@@ -21,6 +21,9 @@ import java.util.logging.Logger;
 public class KrigingwebApplication {
 
     public static void main(String[] args) {
+        Thread.setDefaultUncaughtExceptionHandler((Thread t, Throwable e) -> {
+            System.out.println(t.getName() + "==Exception: " + e);
+        });
         SpringApplication.run(KrigingwebApplication.class, args);
     }
 

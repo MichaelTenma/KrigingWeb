@@ -4,6 +4,8 @@ import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import lombok.Getter;
 
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,6 +45,17 @@ class InterpolaterStore {
         InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
         if(interpolaterNode != null){
             interpolaterNode.working();
+        }
+        return interpolaterNode;
+    }
+
+    public InterpolaterNode getRandomInterpolater(){
+        UUID[] uuidArray = this.interpolaterNodeMap.keySet().toArray(new UUID[0]);
+        int index = new Random().nextInt() % uuidArray.length;
+
+        InterpolaterNode interpolaterNode = null;
+        if(index >= 0 && index < uuidArray.length){
+            interpolaterNode = this.interpolaterNodeMap.get(uuidArray[index]);
         }
         return interpolaterNode;
     }

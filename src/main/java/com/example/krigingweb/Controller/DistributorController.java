@@ -85,7 +85,6 @@ public class DistributorController {
         return new ResponseEntity<>(this.distributorManager.getInterpolaterNodeMap(), HttpStatus.OK);
     }
 
-
     @GetMapping("/start")
     public ResponseEntity<String> start(){
         this.distributorManager.doStart();

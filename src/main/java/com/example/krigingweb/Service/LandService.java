@@ -96,8 +96,12 @@ public class LandService {
                 "\t) as bufferDistance \n" +
                 "from pre_num;";
 
-        Rectangle bufferRectangle = rectangle.buffer(distance);
-        sql = String.format(sql, bufferRectangle, GeoUtil.srid, GeoUtil.samplePointMaxDistance, distance, pointsNum, bufferRectangle.getArea());
+        Rectangle bufferRectangle = rectangle.bufferFromBorder(distance);
+        sql = String.format(
+            sql, bufferRectangle, GeoUtil.srid,
+            GeoUtil.samplePointMaxDistance, distance,
+            pointsNum, bufferRectangle.getArea()
+        );
 
         return this.jdbcTemplate.queryForObject(
                 sql, (rs, rowNum) -> rs.getDouble("bufferDistance")
@@ -124,8 +128,10 @@ public class LandService {
         /* 每个指标选择200个有效点 */
         double maxDistance = 0;/* 各指标的有效率相差不多，只取距离最大的指标以简化代码设计 */
         for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
-            double testDistance = predictDistance;
+            double testDistance = 0;
             while(true){
+                /* 应该通过密度来算，如果初始predictDistance过大，则不会再调整，以至于采样点过多 */
+                /*  */
                 Integer num = this.countPoints(rectangle.bufferFromCenter(testDistance), soilNutrientEnum);
                 if(num < pointsNum){
                     /* 增加1000米 */

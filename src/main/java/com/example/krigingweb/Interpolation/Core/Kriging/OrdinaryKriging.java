@@ -9,10 +9,9 @@ import com.example.krigingweb.Interpolation.Core.Kriging.Variogram.SphericalVari
 import com.example.krigingweb.Interpolation.Core.Regressor;
 
 public class OrdinaryKriging implements Regressor {
-    private final double[][] u;
-
-    private final DoubleMatrix2D ZT_invM;
-    private final VariogramPredictor variogramPredictor;
+    private double[][] u;
+    private DoubleMatrix2D ZT_invM;
+    private VariogramPredictor variogramPredictor;
     public OrdinaryKriging(double lag, double[][] u, double[] Z, VariogramPredictor variogramPredictor){
         this.u = u;
         this.variogramPredictor = variogramPredictor;
@@ -36,12 +35,8 @@ public class OrdinaryKriging implements Regressor {
         }
         M[n][n] = 0;
 
-        /**
-         * Exception in thread "interpolaterThread1" java.lang.ArrayIndexOutOfBoundsException: 373
-         * 	at cern.colt.matrix.linalg.EigenvalueDecomposition.tql2(Unknown Source)
-         * 	at cern.colt.matrix.linalg.EigenvalueDecomposition.<init>(Unknown Source)
-         */
-        EigenvalueDecomposition evd = new EigenvalueDecomposition(DoubleFactory2D.dense.make(M));
+        DoubleMatrix2D MMatrix = DoubleFactory2D.dense.make(M);
+        EigenvalueDecomposition evd = new EigenvalueDecomposition(MMatrix);
         DoubleMatrix1D DDiagonalInverse = evd.getRealEigenvalues().assign(v -> 1.0 / v);
         DoubleMatrix2D invD = DoubleFactory2D.dense.diagonal(DDiagonalInverse);
         DoubleMatrix2D V = evd.getV();
@@ -80,5 +75,12 @@ public class OrdinaryKriging implements Regressor {
         DoubleMatrix2D PMatrix = DoubleFactory2D.dense.make(P);
         DoubleMatrix2D resMatrix = Algebra.DEFAULT.mult(this.ZT_invM, PMatrix);
         return resMatrix.toArray()[0];
+    }
+
+    @Override
+    public void free() {
+        this.u = null;
+        this.ZT_invM = null;
+        this.variogramPredictor = null;
     }
 }

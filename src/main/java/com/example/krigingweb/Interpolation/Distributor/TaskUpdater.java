@@ -4,6 +4,8 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Service.LandService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
+
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -23,6 +25,10 @@ class TaskUpdater {
     public CompletableFuture<Boolean> update(List<LandEntity> landEntityList){
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         this.updateExecutorService.execute(() -> {
+//            if(tempLandEntityList == null){
+//                completableFuture.completeExceptionally(new Throwable());
+//                return;
+//            }
             boolean isSuccess = true;
             for(int i = 0; i < 5;i++){
                 try {

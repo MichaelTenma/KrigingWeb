@@ -63,6 +63,10 @@ public class SphericalVariogram extends VariogramPredictor {
         this.nugget = (d * ATs0 - b * ATs1) / detATA;
         this.partialSill = 2 * (a * ATs1 - c * ATs0) / detATA;
         this.range = range;
+
+        if(this.nugget <= 0) this.nugget = 0;
+        if(this.partialSill <= 0) this.partialSill = 0;
+        if(this.range <= 0) this.range = 0;
     }
 
     @Override

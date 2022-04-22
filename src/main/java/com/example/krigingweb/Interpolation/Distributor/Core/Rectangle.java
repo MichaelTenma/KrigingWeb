@@ -33,7 +33,7 @@ public class Rectangle {
         return (this.right - this.left) * (this.top - this.bottom);
     }
 
-    public Rectangle buffer(double distance){
+    public Rectangle bufferFromBorder(double distance){
         return new Rectangle(
                 this.left - distance,
                 this.right + distance,
@@ -53,19 +53,19 @@ public class Rectangle {
         );
     }
 
-    public Rectangle bufferFromBorder(double distance){
-        double x_distance = (this.right - this.left) / 2;
-        double y_distance = (this.top - this.bottom) / 2;
-        double x_center = x_distance + this.left;
-        double y_center = y_distance + this.bottom;
-
-        return new Rectangle(
-            x_center - distance - x_distance,
-            x_center + distance + x_distance,
-            y_center + distance + y_distance,
-            y_center - distance - y_distance
-        );
-    }
+//    public Rectangle bufferFromBorder(double distance){
+//        double x_distance = (this.right - this.left) / 2;
+//        double y_distance = (this.top - this.bottom) / 2;
+//        double x_center = x_distance + this.left;
+//        double y_center = y_distance + this.bottom;
+//
+//        return new Rectangle(
+//            x_center - distance - x_distance,
+//            x_center + distance + x_distance,
+//            y_center + distance + y_distance,
+//            y_center - distance - y_distance
+//        );
+//    }
 
     public double getWidth(){
         return this.right - this.left;

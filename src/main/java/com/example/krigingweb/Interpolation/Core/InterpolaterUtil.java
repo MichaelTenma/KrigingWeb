@@ -7,10 +7,13 @@ import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.MathUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.OrdinaryKriging;
+import com.example.krigingweb.Interpolation.Core.Util.Triple;
+import com.example.krigingweb.Interpolation.Core.Util.Tuple;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InterpolaterUtil {
     public static CompletableFuture<List<LandEntity>> interpolate(
@@ -27,32 +31,93 @@ public class InterpolaterUtil {
         CompletableFuture<List<LandEntity>> resCompletableFuture = new CompletableFuture<>();
 
         SoilNutrientEnum[] soilNutrientEnumArray = SoilNutrientEnum.values();
-        InterpolationTask[] interpolationTaskMap = new InterpolationTask[soilNutrientEnumArray.length];
-        /* 考虑改进成并行 */
-        List<CompletableFuture<Void>> trainCompletableFutureList = new ArrayList<>(soilNutrientEnumArray.length);
-        for (int i = 0;i < soilNutrientEnumArray.length;i++) {
-            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-            trainCompletableFutureList.add(completableFuture);
-            final int finalI = i;
-            executorService.execute(() -> {
-                try {
-                    interpolationTaskMap[finalI] = train(taskData, soilNutrientEnumArray[finalI], lag);
-                    completableFuture.complete(null);
-                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                    completableFuture.completeExceptionally(e);
-                }
-            });
-        }
-        /* 同步 */
-        CompletableFuture
-            .allOf(trainCompletableFutureList.toArray(new CompletableFuture[0]))
-            .exceptionally(throwable -> {
-                resCompletableFuture.completeExceptionally(throwable);
-                return null;
-            }).join();
+        final int nutrientLength = soilNutrientEnumArray.length;
+
+        InterpolationTask[] interpolationTaskArray = Arrays.stream(soilNutrientEnumArray)
+            .map(soilNutrientEnum -> {
+//                executorService.submit(() -> {
+//                    try {
+//                        completableFuture.complete(train(taskData, soilNutrientEnum, lag));
+//                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+//                        completableFuture.completeExceptionally(e);
+//                    }
+//                });
+//                completableFuture.exceptionally(throwable -> {
+//                    resCompletableFuture.completeExceptionally(throwable);
+//                    return null;
+//                });
+                return CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return train(taskData, soilNutrientEnum, lag);
+                    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }, executorService).exceptionally(throwable -> {
+                    resCompletableFuture.completeExceptionally(throwable);
+                    return null;
+                });
+            }).collect(Collectors.toList())
+            .stream()
+                .map(CompletableFuture::join)
+                .toArray(InterpolationTask[]::new);
 
         final int perNum = 1000;
         final double halfCellSize = cellSize / 2;
+        CompletableFuture<?>[] splitCompletableFutureArray = splitTask(taskData, concurrentNumber).stream()
+            .map(landEntityList -> {
+                return CompletableFuture.runAsync(() -> {
+                    final double[][] each_u_array = new double[perNum][2];
+                    for(LandEntity landEntity : landEntityList){
+                        try {
+                            interpolate(
+                                    landEntity, halfCellSize, cellSize, each_u_array,
+                                    nutrientLength, interpolationTaskArray
+                            );
+                        } catch (InvocationTargetException | IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }, executorService)
+                .exceptionally(throwable -> {
+                    resCompletableFuture.completeExceptionally(throwable);
+                    return null;
+                });
+//                executorService.submit(() -> {
+////                    boolean isSuccess = true;
+//                    final double[][] each_u_array = new double[perNum][2];
+//                    for(LandEntity landEntity : landEntityList){
+//                        try {
+//                            interpolate(
+//                                landEntity, halfCellSize, cellSize, each_u_array,
+//                                nutrientLength, interpolationTaskArray
+//                            );
+//                        } catch (InvocationTargetException | IllegalAccessException e) {
+//                            throw new RuntimeException(e);
+////                            isSuccess = false;
+////                            break;
+//                        }
+//                    }
+////                    if(isSuccess) completableFuture.complete(null);
+//                });
+
+//                completableFuture.exceptionally(throwable -> {
+//                   resCompletableFuture.completeExceptionally(throwable);
+//                   return null;
+//                });
+//                return completableFuture;
+            }).toArray(CompletableFuture<?>[]::new);
+//            .collect(Collectors.toList());
+//                .forEach(CompletableFuture::join);
+
+        CompletableFuture.allOf(splitCompletableFutureArray).thenRunAsync(() -> {
+            resCompletableFuture.complete(taskData.getLandEntityList());
+        });
+        /* 释放内存 */
+//        Arrays.fill(interpolationTaskMap, null);
+        return resCompletableFuture;
+    }
+
+    private static List<List<LandEntity>> splitTask(TaskData taskData, int concurrentNumber){
         List<List<LandEntity>> mapLandEntityList;
         {
             List<LandEntity> landEntityList = taskData.getLandEntityList();
@@ -75,55 +140,18 @@ public class InterpolaterUtil {
                 }
             }
         }
-
-        List<CompletableFuture<Void>> interpolateCompletableFutureList = new ArrayList<>(mapLandEntityList.size());
-        for(List<LandEntity> landEntityList : mapLandEntityList){
-            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
-            interpolateCompletableFutureList.add(completableFuture);
-            executorService.execute(() -> {
-                boolean isSuccess = true;
-                final double[][] each_u_array = new double[perNum][2];
-                for(LandEntity landEntity : landEntityList){
-                    try {
-                        /**
-                         * [DISTRIBUTOR]: 更新地块时发生异常！
-                         * Exception in thread "interpolaterThread1" java.lang.NullPointerException
-                         * 	at com.example.krigingweb.Interpolation.Core.InterpolaterUtil.interpolate(InterpolaterUtil.java:116)
-                         * 	at com.example.krigingweb.Interpolation.Core.InterpolaterUtil.lambda$interpolate$2(InterpolaterUtil.java:87)
-                         */
-                        interpolate(
-                            landEntity, halfCellSize, cellSize, each_u_array,
-                            soilNutrientEnumArray, interpolationTaskMap
-                        );
-                    } catch (InvocationTargetException | IllegalAccessException e) {
-                        completableFuture.completeExceptionally(e);
-                        isSuccess = false;
-                        break;
-                    }
-                }
-                if(isSuccess) completableFuture.complete(null);
-            });
-        }
-
-        CompletableFuture.allOf(interpolateCompletableFutureList.toArray(new CompletableFuture[0]))
-            .thenRun(() -> {
-                resCompletableFuture.complete(taskData.getLandEntityList());
-            }).exceptionally(throwable -> {
-                resCompletableFuture.completeExceptionally(throwable);
-                return null;
-            });
-        return resCompletableFuture;
+        return mapLandEntityList;
     }
 
     private static void interpolate(
         LandEntity landEntity, final double halfCellSize, final double cellSize,
-        final double[][] each_u_array, SoilNutrientEnum[] soilNutrientEnumArray,
-        InterpolationTask[] interpolationTaskMap
+        final double[][] each_u_array, int nutrientLength,
+        final InterpolationTask[] interpolationTaskArray
     ) throws InvocationTargetException, IllegalAccessException {
         final int perNum = each_u_array.length;
         final Geometry geometry = landEntity.getMultiPolygon();
         final Envelope envelope = geometry.getEnvelopeInternal();
-        final double[] nutrientArray = new double[soilNutrientEnumArray.length];
+        final double[] nutrientArray = new double[nutrientLength];
 
         int i = 0, sumNum = 0;
         for(double beginY = envelope.getMinY(); beginY < envelope.getMaxY(); beginY += cellSize){
@@ -138,30 +166,36 @@ public class InterpolaterUtil {
                     i++;
                     sumNum++;
                     if(i >= perNum){
-                        regionSum(nutrientArray, each_u_array, interpolationTaskMap);
+                        System.out.println("满了");
+                        regionSum(nutrientArray, each_u_array, interpolationTaskArray);
                         i -= perNum;
                     }
                 }
             }
         }
 
+        if(sumNum == 0){
+            each_u_array[i][0] = envelope.getMinX() + halfCellSize;
+            each_u_array[i][1] = envelope.getMinY() + halfCellSize;
+            sumNum++;
+            i++;
+        }
         if(i > 0){
             double[][] temp_each_u_array = Arrays.copyOfRange(each_u_array, 0, i);
-            regionSum(nutrientArray, temp_each_u_array, interpolationTaskMap);
+            regionSum(nutrientArray, temp_each_u_array, interpolationTaskArray);
         }
 
         for(int j = 0;j < nutrientArray.length;j++){
-            /* 有问题 */
-            interpolationTaskMap[j].setSoilNutrientMethod.invoke(landEntity, nutrientArray[j] / sumNum);
+            interpolationTaskArray[j].setSoilNutrientMethod.invoke(landEntity, nutrientArray[j] / sumNum);
         }
     }
 
     private static void regionSum(
         final double[] nutrientArray, final double[][] each_u_array,
-        final InterpolationTask[] interpolationTaskMap
+        final InterpolationTask[] interpolationTaskArray
     ){
         for(int j = 0;j < nutrientArray.length;j++){
-            InterpolationTask interpolationTask = interpolationTaskMap[j];
+            InterpolationTask interpolationTask = interpolationTaskArray[j];
             double[] predict_Z = interpolationTask.regressor.predict(each_u_array);
             for (double v : predict_Z) {
                 nutrientArray[j] += v;
@@ -175,7 +209,7 @@ public class InterpolaterUtil {
         Method getSoilNutrientMethod = SamplePointEntity.class.getMethod("get" + soilNutrientEnum);
 
         /* 应该对采样点各个指标进行过滤 */
-        System.out.println("\n指标名称： " + soilNutrientEnum.name);
+//        System.out.println("\n指标名称： " + soilNutrientEnum.name);
         List<SamplePointEntity> samplePointEntityList = taskData.getSamplePointEntityList();
         List<SamplePointEntity> filterSamplePointEntityList = samplePointEntityList.stream()
                 .filter(NutrientFilter.get(soilNutrientEnum)).collect(Collectors.toList());
@@ -222,6 +256,6 @@ public class InterpolaterUtil {
         Method setSoilNutrientMethod =
                 LandEntity.class.getMethod("set" + soilNutrientEnum, Double.class);
 
-        return new InterpolationTask(ordinaryKriging, setSoilNutrientMethod);
+        return new InterpolationTask(ordinaryKriging, setSoilNutrientMethod, soilNutrientEnum);
     }
 }

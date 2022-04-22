@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Data
 @NoArgsConstructor
-public class TaskData  {
+public class TaskData  implements MemoryFree{
     public UUID taskID;
     public UUID belongInterpolaterID;
     private ZonedDateTime createTime;
@@ -58,7 +58,7 @@ public class TaskData  {
     }
 
     public boolean isTimeOut(ZonedDateTime boundTime){
-        return this.createTime.compareTo(boundTime) <= 0;
+        return this.postTime.compareTo(boundTime) <= 0;
     }
 
     public void update(List<LandEntity> landEntityList){
@@ -81,6 +81,12 @@ public class TaskData  {
         }
         sb.setCharAt(sb.length() - 1, ' ');
         return sb.toString();
+    }
+
+    @Override
+    public void free() {
+        this.samplePointEntityList = null;
+        this.landEntityList = null;
     }
 
     @Getter

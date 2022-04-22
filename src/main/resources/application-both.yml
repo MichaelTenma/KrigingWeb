@@ -7,7 +7,7 @@ distributor:
 
 interpolater:
   enable: true
-  concurrentNumber: 7
+  concurrentNumber: 8
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 30
