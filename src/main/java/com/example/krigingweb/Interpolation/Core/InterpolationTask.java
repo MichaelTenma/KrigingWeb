@@ -4,7 +4,7 @@ import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 
 import java.lang.reflect.Method;
 
-public class InterpolationTask implements MemoryFree{
+public class InterpolationTask{
     public final Regressor regressor;
     public final Method setSoilNutrientMethod;
     public final SoilNutrientEnum soilNutrientEnum;
@@ -15,7 +15,7 @@ public class InterpolationTask implements MemoryFree{
         this.soilNutrientEnum = soilNutrientEnum;
     }
 
-    public void free(){
-        this.regressor.free();
-    }
+//    public void free(){
+//        this.regressor.free();
+//    }
 }

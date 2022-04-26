@@ -11,10 +11,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
 @NoArgsConstructor
-public class TaskData  implements MemoryFree{
+public class TaskData{
     public UUID taskID;
     public UUID belongInterpolaterID;
     private ZonedDateTime createTime;
@@ -24,6 +25,7 @@ public class TaskData  implements MemoryFree{
 
     private Map<SoilNutrientEnum, ErrorInfo> errorMap;
     private VariogramPredictor variogramPredictor;
+    private final AtomicInteger maxInvalidNumber = new AtomicInteger(3);
 
     public TaskData(
         UUID taskID, ZonedDateTime createTime,
@@ -60,6 +62,8 @@ public class TaskData  implements MemoryFree{
     public boolean isTimeOut(ZonedDateTime boundTime){
         return this.postTime.compareTo(boundTime) <= 0;
     }
+    public boolean couldBeDistributed(){ return this.maxInvalidNumber.get() > 0; }
+    public void invalid(){this.maxInvalidNumber.decrementAndGet();}
 
     public void update(List<LandEntity> landEntityList){
         this.landEntityList = landEntityList;
@@ -81,12 +85,6 @@ public class TaskData  implements MemoryFree{
         }
         sb.setCharAt(sb.length() - 1, ' ');
         return sb.toString();
-    }
-
-    @Override
-    public void free() {
-        this.samplePointEntityList = null;
-        this.landEntityList = null;
     }
 
     @Getter

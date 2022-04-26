@@ -7,13 +7,10 @@ import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.MathUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.OrdinaryKriging;
-import com.example.krigingweb.Interpolation.Core.Util.Triple;
-import com.example.krigingweb.Interpolation.Core.Util.Tuple;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -22,11 +19,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class InterpolaterUtil {
     public static CompletableFuture<List<LandEntity>> interpolate(
-        TaskData taskData, double cellSize, double lag, ExecutorService executorService, int concurrentNumber
+        TaskData taskData, double cellSize, double lag, double maxLag,
+        ExecutorService executorService, int concurrentNumber
     ) {
         CompletableFuture<List<LandEntity>> resCompletableFuture = new CompletableFuture<>();
 
@@ -34,29 +31,16 @@ public class InterpolaterUtil {
         final int nutrientLength = soilNutrientEnumArray.length;
 
         InterpolationTask[] interpolationTaskArray = Arrays.stream(soilNutrientEnumArray)
-            .map(soilNutrientEnum -> {
-//                executorService.submit(() -> {
-//                    try {
-//                        completableFuture.complete(train(taskData, soilNutrientEnum, lag));
-//                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-//                        completableFuture.completeExceptionally(e);
-//                    }
-//                });
-//                completableFuture.exceptionally(throwable -> {
-//                    resCompletableFuture.completeExceptionally(throwable);
-//                    return null;
-//                });
-                return CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return train(taskData, soilNutrientEnum, lag);
-                    } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    }
-                }, executorService).exceptionally(throwable -> {
-                    resCompletableFuture.completeExceptionally(throwable);
-                    return null;
-                });
-            }).collect(Collectors.toList())
+            .map(soilNutrientEnum -> CompletableFuture.supplyAsync(() -> {
+                try {
+                    return train(taskData, soilNutrientEnum, lag, maxLag);
+                } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }, executorService).exceptionally(throwable -> {
+                resCompletableFuture.completeExceptionally(throwable);
+                return null;
+            })).collect(Collectors.toList())
             .stream()
                 .map(CompletableFuture::join)
                 .toArray(InterpolationTask[]::new);
@@ -64,56 +48,28 @@ public class InterpolaterUtil {
         final int perNum = 1000;
         final double halfCellSize = cellSize / 2;
         CompletableFuture<?>[] splitCompletableFutureArray = splitTask(taskData, concurrentNumber).stream()
-            .map(landEntityList -> {
-                return CompletableFuture.runAsync(() -> {
-                    final double[][] each_u_array = new double[perNum][2];
-                    for(LandEntity landEntity : landEntityList){
-                        try {
-                            interpolate(
-                                    landEntity, halfCellSize, cellSize, each_u_array,
-                                    nutrientLength, interpolationTaskArray
-                            );
-                        } catch (InvocationTargetException | IllegalAccessException e) {
-                            throw new RuntimeException(e);
-                        }
+            .map(landEntityList -> CompletableFuture.runAsync(() -> {
+                final double[][] each_u_array = new double[perNum][2];
+                for(LandEntity landEntity : landEntityList){
+                    try {
+                        interpolate(
+                            landEntity, halfCellSize, cellSize, each_u_array,
+                            nutrientLength, interpolationTaskArray
+                        );
+                    } catch (InvocationTargetException | IllegalAccessException e) {
+                        throw new RuntimeException(e);
                     }
-                }, executorService)
-                .exceptionally(throwable -> {
-                    resCompletableFuture.completeExceptionally(throwable);
-                    return null;
-                });
-//                executorService.submit(() -> {
-////                    boolean isSuccess = true;
-//                    final double[][] each_u_array = new double[perNum][2];
-//                    for(LandEntity landEntity : landEntityList){
-//                        try {
-//                            interpolate(
-//                                landEntity, halfCellSize, cellSize, each_u_array,
-//                                nutrientLength, interpolationTaskArray
-//                            );
-//                        } catch (InvocationTargetException | IllegalAccessException e) {
-//                            throw new RuntimeException(e);
-////                            isSuccess = false;
-////                            break;
-//                        }
-//                    }
-////                    if(isSuccess) completableFuture.complete(null);
-//                });
-
-//                completableFuture.exceptionally(throwable -> {
-//                   resCompletableFuture.completeExceptionally(throwable);
-//                   return null;
-//                });
-//                return completableFuture;
-            }).toArray(CompletableFuture<?>[]::new);
-//            .collect(Collectors.toList());
-//                .forEach(CompletableFuture::join);
+                }
+            }, executorService)
+            .exceptionally(throwable -> {
+                resCompletableFuture.completeExceptionally(throwable);
+                return null;
+            })).toArray(CompletableFuture<?>[]::new);
 
         CompletableFuture.allOf(splitCompletableFutureArray).thenRunAsync(() -> {
             resCompletableFuture.complete(taskData.getLandEntityList());
         });
         /* 释放内存 */
-//        Arrays.fill(interpolationTaskMap, null);
         return resCompletableFuture;
     }
 
@@ -204,7 +160,7 @@ public class InterpolaterUtil {
     }
 
     private static InterpolationTask train(
-        TaskData taskData, SoilNutrientEnum soilNutrientEnum, double lag
+        TaskData taskData, SoilNutrientEnum soilNutrientEnum, double lag, double maxLag
     ) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method getSoilNutrientMethod = SamplePointEntity.class.getMethod("get" + soilNutrientEnum);
 
@@ -241,7 +197,7 @@ public class InterpolaterUtil {
             test_Z[k - train_n] = (double) getSoilNutrientMethod.invoke(samplePointEntity);
         }
 
-        OrdinaryKriging ordinaryKriging = new OrdinaryKriging(lag, train_u, train_Z);
+        OrdinaryKriging ordinaryKriging = new OrdinaryKriging(lag, maxLag, train_u, train_Z);
         double[] predict_test_Z = ordinaryKriging.predict(test_u);
         double[] predict_train_Z = ordinaryKriging.predict(train_u);
         ErrorEntity testErrorEntity = new ErrorEntity(

@@ -84,7 +84,7 @@ public class LandService {
         return landIDList.isEmpty() ? null : landIDList.get(0);
     }
 
-    public Double predictBufferDistance(Rectangle rectangle, double distance, int pointsNum){
+    public double predictBufferDistance(Rectangle rectangle, double distance, int pointsNum){
         String sql = "WITH pre_num as (\n" +
                 "\tselect count(sample_points.*) as num from sample_points \n" +
                 "\twhere ST_Intersects(geom, ST_geomFromText('%s', %d))\n" +
@@ -92,7 +92,7 @@ public class LandService {
                 ")\n" +
                 "select (\n" +
                 "\t\tcase when num <= 0 then %f \n" +
-                "\t\telse sqrt((%d.0 / num) * %f / 3.14159265) end\n" +
+                "\t\telse sqrt((%d.0 / num) * %f) end\n" +
                 "\t) as bufferDistance \n" +
                 "from pre_num;";
 
@@ -103,9 +103,14 @@ public class LandService {
             pointsNum, bufferRectangle.getArea()
         );
 
-        return this.jdbcTemplate.queryForObject(
-                sql, (rs, rowNum) -> rs.getDouble("bufferDistance")
+        Double predictDistance = this.jdbcTemplate.queryForObject(
+            sql, (rs, rowNum) -> rs.getDouble("bufferDistance")
         );
+
+        predictDistance = predictDistance == null ? 0 : predictDistance;
+        predictDistance -= Math.sqrt(rectangle.getArea());
+        predictDistance = predictDistance <= 0 ? 0 : predictDistance;
+        return predictDistance;
     }
 
     private Integer countPoints(Rectangle rectangle, SoilNutrientEnum soilNutrientEnum){
@@ -124,27 +129,18 @@ public class LandService {
         return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> rs.getInt("num"));
     }
 
-    public double calMaxDistance(Rectangle rectangle, double predictDistance, int pointsNum){
-        /* 每个指标选择200个有效点 */
-        double maxDistance = 0;/* 各指标的有效率相差不多，只取距离最大的指标以简化代码设计 */
-        for(SoilNutrientEnum soilNutrientEnum : SoilNutrientEnum.values()){
-            double testDistance = 0;
-            while(true){
-                /* 应该通过密度来算，如果初始predictDistance过大，则不会再调整，以至于采样点过多 */
-                /*  */
-                Integer num = this.countPoints(rectangle.bufferFromCenter(testDistance), soilNutrientEnum);
-                if(num < pointsNum){
-                    /* 增加1000米 */
-                    testDistance += 1000;
-                }else{
-                    break;
-                }
-            }
-            if(testDistance > maxDistance){
-                maxDistance = testDistance;
-            }
-        }
-        return maxDistance;
+    public Rectangle calRectangle(Rectangle rectangle, double distance, int pointsNum){
+        /* 先判断rectangle内有没有足够的点 */
+        Integer num = this.countPoints(rectangle, SoilNutrientEnum.K);
+        if(num >= pointsNum) return rectangle.bufferFromBorder(2000);/* 在边框外加2km，尽力确保内插 */
+
+        /* rectangle内没有足够的点，寻找一个有足够点的缓冲区 */
+        double bias = 0;
+        do{
+            num = this.countPoints(rectangle.bufferFromBorder(bias), SoilNutrientEnum.K);
+            bias += 1000;
+        }while(num < pointsNum);
+        return rectangle.bufferFromBorder(bias);
     }
 
     public void updateLand(List<LandEntity> landEntityList){

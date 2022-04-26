@@ -37,13 +37,15 @@ public class TaskStore {
     }
 
     public TaskData requestTask(){
+        TaskData taskData = this.data.poll();
+        if(taskData == null) return null;
         if(this.count.decrementAndGet() > 0){
             /* signal */
             restLock.lock();
             restLockCondition.signal();
             restLock.unlock();
         }
-        return this.data.poll();
+        return taskData;
     }
 
     public boolean isEmpty(){

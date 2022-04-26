@@ -30,12 +30,8 @@ public class RectangleQuickBufferTaskGenerator extends AbstractTaskGenerator {
         List<LandEntity> landEntityList = this.landService.list(rectangle, InterpolatedStatusEnum.UnStart);
         if(landEntityList != null && landEntityList.size() > 0){
             final int pointsNum = 200;
-            Double predictDistance = this.landService.predictBufferDistance(
-                    rectangle, 10000, pointsNum + 100
-            );
-            double maxDistance = this.landService.calMaxDistance(rectangle, predictDistance, pointsNum);
-            List<SamplePointEntity> samplePointEntityList =
-                    this.samplePointService.list(rectangle.bufferFromCenter(maxDistance));
+            Rectangle bufferRectangle = this.landService.calRectangle(rectangle, 10000, pointsNum);
+            List<SamplePointEntity> samplePointEntityList = this.samplePointService.list(bufferRectangle);
             if(samplePointEntityList != null && samplePointEntityList.size() > 0){
                 TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
                 this.landService.markPrepareInterpolated(landEntityList);

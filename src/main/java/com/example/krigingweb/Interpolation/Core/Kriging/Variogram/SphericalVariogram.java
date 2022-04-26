@@ -34,9 +34,9 @@ public class SphericalVariogram extends VariogramPredictor {
     }
 
     @Override
-    protected void OLS(int rangeIndex, final double[][] S) {
+    public void OLS(int rangeIndex, double range, final double[][] S) {
         int n = rangeIndex + 1;
-        double range = S[rangeIndex][0];
+//        double range = S[rangeIndex][0];
         double[][] A = new double[n][2];
         for(int k = 0;k < n;k++){
             final double beta = S[k][0] / range;
@@ -44,7 +44,7 @@ public class SphericalVariogram extends VariogramPredictor {
         }
 
         // ATA = [[a, b], [c, d]]
-        double a = n * 2,b = 0,d = 0;
+        double a = n, b = 0, d = 0;
         for(int i = 0;i < n;i++){
             b += A[i][1];
             d += A[i][1] * A[i][1];
@@ -63,10 +63,6 @@ public class SphericalVariogram extends VariogramPredictor {
         this.nugget = (d * ATs0 - b * ATs1) / detATA;
         this.partialSill = 2 * (a * ATs1 - c * ATs0) / detATA;
         this.range = range;
-
-        if(this.nugget <= 0) this.nugget = 0;
-        if(this.partialSill <= 0) this.partialSill = 0;
-        if(this.range <= 0) this.range = 0;
     }
 
     @Override

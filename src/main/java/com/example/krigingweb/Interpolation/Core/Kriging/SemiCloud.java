@@ -7,7 +7,7 @@ public class SemiCloud<V extends VariogramPredictor> {
     private final double[][] S;
     private final double[] L;
 
-    public SemiCloud(double lag, double[][] u, double[] Z){
+    public SemiCloud(double lag, double maxLag, double[][] u, double[] Z){
         n = u.length;
         L = new double[(n-1) * n / 2];
 
@@ -47,17 +47,25 @@ public class SemiCloud<V extends VariogramPredictor> {
             }
         }
 
+        {
+            int index = 0;
+            double[][] tmpS = new double[semiArray.length][2];
+            for(int i = 0;i < semiArray.length;i++){
+                if(NArray[i] != 0) semiArray[i] /= NArray[i];
+                tmpS[i][0] = minL + (i - 0.5)*lag;
+                tmpS[i][1] = semiArray[i];
 
-        double[][] tmpS = new double[semiArray.length][2];
-        for(int i = 0;i < semiArray.length;i++){
-            semiArray[i] /= NArray[i];
-            tmpS[i][0] = minL + (i - 0.5)*lag;
-            tmpS[i][1] = semiArray[i];
+                if(tmpS[i][0] <= maxLag){
+                    index = i;
+                }
+            }
+            tmpS[0][0] = 0;
+            tmpS[0][1] = 0;
+
+//            index = Math.min(index, tmpS.length / 2) + 1;
+            index ++;
+            this.S = Arrays.copyOfRange(tmpS, 1, index);
         }
-        tmpS[0][0] = 0;
-        tmpS[0][1] = 0;
-
-        this.S = Arrays.copyOfRange(tmpS, 0, tmpS.length / 2 + 1);
     }
 
     protected int zipIndex(int k, int j){
@@ -70,26 +78,54 @@ public class SemiCloud<V extends VariogramPredictor> {
      * 其对角线元素均为拟合得到的变异模型的块金，使用数组的最后一位存储块金，注意处理
      */
     public double[] fit(V variogramPredictor){
-        V minVariogramPredictor = variogramPredictor;
-        double minWeightedRMSE = Double.MAX_VALUE;
-        for(int i = 0;i < S.length;i++){
-            variogramPredictor.OLS(i, S);
-            /* weighted RMSE */
-            double weightedRMSE = 0;
-            for(int k = 0;k < S.length;k++){
-                double predict_semi = variogramPredictor.predict(S[k][0]);
-                double delta_semi = Math.pow(predict_semi - S[k][1], 2);
-                double weight = 1 - k * 1.0 / S.length;
-//                double weight = 1;
-                weightedRMSE += 2 * weight * delta_semi / (S.length + 1) / S.length;
+        /*
+         * 1. 将研究区域分成15组，[left, right]
+         * 2. 以每组的中心作为变程点拟合变异模型
+         * 3. 计算每组的误差，并挑选出误差最小的组
+         * 4. 取与该组相邻的组，即为2~3组，视作新的研究范围
+         * 5. 若新研究范围内有超过一个可选变程点存在，则重复第1步
+         * 6. 该可选变程点即为最优变程点
+         */
+        V minVariogramPredictor = (V) variogramPredictor.clone();
+        double minWeightedRMSE = variogramPredictor.loss(S);
+        double left = S[0][0], right = S[S.length - 1][0];
+        int groupNumber = 15;
+        while(true){
+            final double gap = (right - left) / groupNumber;
+            double minRange = 0;
+            for(double cur = left + gap / 2;cur < right;cur += gap){
+                int rangeIndex = S.length - 1;
+                for(int i = 0; i < S.length - 1;i++){
+                    if(cur >= S[i][0] && cur <= S[i+1][0]){
+                        rangeIndex = i;
+                        break;
+                    }
+                }
+                variogramPredictor.OLS(rangeIndex, cur, S);
+
+                /* weighted RMSE */
+                double weightedRMSE = variogramPredictor.loss(Arrays.copyOfRange(S, 0, rangeIndex + 1));
+                if(weightedRMSE < minWeightedRMSE){
+                    minWeightedRMSE = weightedRMSE;
+                    minVariogramPredictor.update(variogramPredictor);
+                    minRange = cur;
+                }
             }
-            weightedRMSE = Math.sqrt(weightedRMSE);
-            if(weightedRMSE < minWeightedRMSE){
-                minWeightedRMSE = weightedRMSE;
-                minVariogramPredictor = (V) variogramPredictor.clone();
+
+            left = Math.max(minRange - gap, left);
+            right = Math.min(minRange + gap, right);
+            if(left >= right) break;
+
+            int sum = 0;
+            for (double[] doubles : S) {
+                if(doubles[0] < left) continue;
+                if(doubles[0] <= right) sum++;
+                else break;
             }
+            if(sum <= 1) break;
         }
 
+//        System.out.println(this.toString() + minVariogramPredictor);
         double[] predictSemiMatrix = new double[L.length + 1];
         for(int k = 0; k < predictSemiMatrix.length - 1; k++){
             predictSemiMatrix[k] = minVariogramPredictor.predict(L[k]);
@@ -102,16 +138,16 @@ public class SemiCloud<V extends VariogramPredictor> {
 
     @Override
     public String toString(){
-        StringBuilder hString = new StringBuilder("h = [");
+        StringBuilder distanceString = new StringBuilder("distance = [");
         StringBuilder semiString = new StringBuilder("semi = [");
         for (double[] doubles : this.S) {
-            hString.append(doubles[0] + ',');
-            semiString.append(doubles[1] + ',');
+            distanceString.append(doubles[0]).append(',');
+            semiString.append(doubles[1]).append(',');
         }
-        hString.setCharAt(hString.length()-1,']');
+        distanceString.setCharAt(distanceString.length()-1,']');
         semiString.setCharAt(semiString.length()-1,']');
-        hString.append(";\n");
+        distanceString.append(";\n");
         semiString.append(";\n");
-        return hString.toString() + semiString;
+        return distanceString.toString() + semiString;
     }
 }

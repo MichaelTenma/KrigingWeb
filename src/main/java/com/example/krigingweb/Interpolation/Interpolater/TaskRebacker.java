@@ -8,10 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 class TaskRebacker {
@@ -19,8 +22,13 @@ class TaskRebacker {
     private final String distributorURL;
     private final UUID interpolaterID;
     private final RestTemplate restTemplate;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor(
+        new CustomizableThreadFactory("interpolater-rebacker-")
+    );
 
-    TaskRebacker(String distributorURL, UUID interpolaterID, RestTemplate restTemplate) {
+    TaskRebacker(
+        String distributorURL, UUID interpolaterID, RestTemplate restTemplate
+    ) {
         this.distributorURL = distributorURL;
         this.interpolaterID = interpolaterID;
         this.restTemplate = restTemplate;
@@ -28,22 +36,14 @@ class TaskRebacker {
 
     public void reback(TaskData taskData){
         log.info("[INTERPOLATER TASK]: taskID: " + taskData.taskID + ", " + taskData.errorMapToString());
-        CompletableFuture.supplyAsync(() -> {
-            String url = this.distributorURL + "/distributor/doneTask";
-            DoneTaskRequest doneTaskRequest
-                    = new DoneTaskRequest(interpolaterID, taskData.taskID, taskData.getLandEntityList());
+        String url = this.distributorURL + "/distributor/doneTask";
+        DoneTaskRequest doneTaskRequest
+                = new DoneTaskRequest(interpolaterID, taskData.taskID, taskData.getLandEntityList());
+        HttpEntity<DoneTaskRequest> httpEntity
+                = new HttpEntity<>(doneTaskRequest, HttpUtil.jsonHeaders);
 
-            HttpEntity<DoneTaskRequest> httpEntity
-                    = new HttpEntity<>(doneTaskRequest, HttpUtil.jsonHeaders);
-
-            ResponseEntity<DoneTaskStatus> responseEntity
-                    = this.restTemplate.postForEntity(url, httpEntity, DoneTaskStatus.class);
-
-            if(responseEntity.getStatusCode().equals(HttpStatus.OK)){
-                return responseEntity.getBody();
-            }else{
-                return null;
-            }
-        });
+        CompletableFuture.runAsync(() -> {
+            this.restTemplate.postForEntity(url, httpEntity, DoneTaskStatus.class);
+        }, this.executorService);
     }
 }

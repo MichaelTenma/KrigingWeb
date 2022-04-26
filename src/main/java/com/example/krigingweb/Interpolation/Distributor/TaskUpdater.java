@@ -16,37 +16,32 @@ class TaskUpdater {
 
     public TaskUpdater(int maxUpdaterNumber, LandService landService) {
         this.landService = landService;
-        this.updateExecutorService = new ThreadPoolExecutor(
-            maxUpdaterNumber, maxUpdaterNumber, 0L, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(), new CustomizableThreadFactory("distributor-taskUpdater-")
+
+        this.updateExecutorService = Executors.newFixedThreadPool(
+            maxUpdaterNumber,
+            new CustomizableThreadFactory("distributor-taskUpdater-")
         );
+//        this.updateExecutorService = new ThreadPoolExecutor(
+//            maxUpdaterNumber, maxUpdaterNumber, 0L, TimeUnit.MILLISECONDS,
+//            new LinkedBlockingQueue<>(), new CustomizableThreadFactory("distributor-taskUpdater-")
+//        );
     }
 
-    public CompletableFuture<Boolean> update(List<LandEntity> landEntityList){
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        this.updateExecutorService.execute(() -> {
-//            if(tempLandEntityList == null){
-//                completableFuture.completeExceptionally(new Throwable());
-//                return;
-//            }
-            boolean isSuccess = true;
-            for(int i = 0; i < 5;i++){
+    public CompletableFuture<Void> update(List<LandEntity> landEntityList){
+        return CompletableFuture.runAsync(() -> {
+            int i = 0;
+            for(; i < 5;i++){
                 try {
                     this.landService.updateLand(landEntityList);
-                    isSuccess = true;
                     break;/* 正常情况执行一次即退出 */
-                } catch (Exception e) {
-                    log.warn("[DISTRIBUTOR]: 更新地块时发生异常！", e);
-                    isSuccess = false;
+                } catch (Throwable e) {
+                    e.printStackTrace();
                     Thread.yield();
                 }
             }
-            if(isSuccess){
-                completableFuture.complete(true);
-            }else{
-                completableFuture.completeExceptionally(new Throwable());
+            if(i == 5){
+                throw new RuntimeException();
             }
         });
-        return completableFuture;
     }
 }

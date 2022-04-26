@@ -66,18 +66,29 @@ public class DistributorController {
             doneTaskRequest.taskID, doneTaskRequest.landEntityList
         );
 //        log.info("[DONE TASK]: " + doneTaskStatus);
-        return new ResponseEntity<>(doneTaskStatus, HttpStatus.OK);
+        return new ResponseEntity<>(
+            doneTaskStatus,
+            doneTaskStatus == null ? HttpStatus.INTERNAL_SERVER_ERROR : HttpStatus.OK
+        );
     }
 
-    @PostMapping("/interpolaterException")
-    public ResponseEntity<String> interpolaterException(
-        @RequestParam UUID interpolaterID
-    ) throws EmptyException {
+    @GetMapping("/interpolaterException")
+    public ResponseEntity<String> interpolaterException(String interpolaterID) throws EmptyException {
         EmptyException.check("interpolaterID", interpolaterID);
 
-        this.distributorManager.deleteInterpolater(interpolaterID);
-        log.warn("[EXCEPTIONAL INTERPOLATER]: " + interpolaterID);
+        UUID id = UUID.fromString(interpolaterID);
+        this.distributorManager.deleteInterpolater(id);
+        log.warn("[EXCEPTIONAL INTERPOLATER]: " + id);
         return new ResponseEntity<>("标记插值结点异常成功！", HttpStatus.OK);
+    }
+
+    @GetMapping("/heartBeat")
+    public ResponseEntity<String> heartBeat(String interpolaterID) throws EmptyException {
+        EmptyException.check("interpolaterID", interpolaterID);
+        UUID id = UUID.fromString(interpolaterID);
+        this.distributorManager.heartBeat(id);
+        log.info("[HEARTBEAT INTERPOLATER]: " + id);
+        return new ResponseEntity<>("插值结点心跳检测成功！", HttpStatus.OK);
     }
 
     @GetMapping("/showInterpolaterURLMap")

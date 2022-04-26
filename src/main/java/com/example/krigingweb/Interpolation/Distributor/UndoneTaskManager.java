@@ -32,8 +32,10 @@ class UndoneTaskManager {
 
     private TaskData removeTask(UUID taskID){
         TaskData taskData = this.undoneTaskMap.remove(taskID);
-        this.undoneTaskQueue.remove(taskData);
-        this.taskCount.decrementAndGet();
+        if(taskData != null){
+            this.undoneTaskQueue.remove(taskData);
+            this.taskCount.decrementAndGet();
+        }
         return taskData;
     }
 
@@ -43,10 +45,11 @@ class UndoneTaskManager {
             TaskData taskData = this.undoneTaskQueue.peek();
             if(taskData == null) break;
 
-            if(taskData.isTimeOut(boundZonedDateTime)){
+            if(taskData.isTimeOut(boundZonedDateTime) || !taskData.couldBeDistributed()){
                 /* 该任务时间超时，移除该任务 */
                 log.info("[UNDONE TASK TIMEOUT]: check timeout.");
                 this.removeTask(taskData.taskID);
+                taskData.invalid();
                 timeoutHandler.handle(taskData);
             }else{
                 /* 若队头任务未超时，则后续任务也不可能超时，直接退出循环 */

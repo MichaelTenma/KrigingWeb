@@ -2,7 +2,6 @@ package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Interpolation.Basic.Enum.StatusEnum;
-import com.example.krigingweb.Interpolation.Basic.HttpUtil;
 import com.example.krigingweb.Interpolation.Basic.StatusManage;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
@@ -12,14 +11,10 @@ import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.RectangleQ
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
-
-import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
@@ -36,7 +31,9 @@ public class DistributorManager implements StatusManage {
     private final Queue<InterpolaterNode> readyQueue = new LinkedList<>();
     private final Queue<InterpolaterNode> runningQueue = new LinkedList<>();
 
-    private final ExecutorService daemonExecutorService;
+    private final ScheduledExecutorService daemonExecutorService= Executors.newScheduledThreadPool(
+        1, new CustomizableThreadFactory("distributor-daemon-")
+    );
 
     private StatusEnum statusEnum = StatusEnum.Stop;
     private final ReentrantLock statusOpLock = new ReentrantLock();
@@ -47,29 +44,27 @@ public class DistributorManager implements StatusManage {
         RestTemplate restTemplate
     ) {
         this.restTemplate = restTemplate;
-        this.taskStore = new TaskStore(20);
+        this.taskStore = new TaskStore(10);
         this.taskGenerator = new RectangleQuickBufferTaskGenerator(
             this.taskStore, totalTaskGeneratorThreadNumber,
             landService, samplePointService
         );
 
-        ExecutorService taskGeneratorExecutorService = new ThreadPoolExecutor(
-            totalTaskGeneratorThreadNumber, totalTaskGeneratorThreadNumber,
-            0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+        ExecutorService taskGeneratorExecutorService = Executors.newFixedThreadPool(
+            totalTaskGeneratorThreadNumber,
             new CustomizableThreadFactory("distributor-taskGenerator-")
         );
         for(int i = 0;i < totalTaskGeneratorThreadNumber;i++){
             taskGeneratorExecutorService.execute(this.taskGenerator);
         }
 
-        this.daemonExecutorService = new ThreadPoolExecutor(
-            1, 1, 0L, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(), new CustomizableThreadFactory("distributor-daemon-")
-        );
-
         this.interpolaterStore = new InterpolaterStore();
         this.undoneTaskManager = new UndoneTaskManager();
         this.taskUpdater = new TaskUpdater(totalTaskUpdaterThreadNumber, landService);
+    }
+
+    public void heartBeat(UUID interpolaterID){
+        this.interpolaterStore.heartBeat(interpolaterID);
     }
 
     public void registerInterpolater(UUID interpolaterID, int maxTaskNumber, String url){
@@ -83,16 +78,21 @@ public class DistributorManager implements StatusManage {
     }
 
     private void runTask(InterpolaterNode interpolaterNode, TaskData taskData){
-        interpolaterNode.addTask();
         taskData.belongInterpolaterID = interpolaterNode.id;
         taskData.updatePostTime();
-
         /* 待完成任务存储器 */
         this.undoneTaskManager.addUndoneTask(taskData);
-
         /* 发出任务 */
-        CompletableFuture.runAsync(() -> this.postTaskData(interpolaterNode.url, taskData));
-//                this.daemonExecutorService.execute(() -> this.postTaskData(interpolaterNode.url, taskData));
+        this.daemonExecutorService.submit(
+            () -> {
+                try{
+                    interpolaterNode.addTask(taskData, this.restTemplate);
+                }catch (Throwable e){
+                    System.out.println("runTask");
+                    e.printStackTrace();
+                }
+            }
+        );
     }
     private void requestTask(){
         /* 是否有任务，是否有空闲结点，若有则申请任务，否则进入下一轮等待 */
@@ -103,26 +103,22 @@ public class DistributorManager implements StatusManage {
 
             while(!this.taskStore.isEmpty() && interpolaterNode.getRestTaskNumber() > 0){
                 TaskData taskData = this.taskStore.requestTask();
-                this.runTask(interpolaterNode, taskData);
+                if(taskData != null)this.runTask(interpolaterNode, taskData);
             }
 
             if(!this.runningQueue.contains(interpolaterNode)) {
                 this.runningQueue.add(interpolaterNode);
             }
 
-            if(interpolaterNode.getRestTaskNumber() > 0){
+            if(interpolaterNode.getRestTaskNumber() > 0 && !this.readyQueue.contains(interpolaterNode)){
                 this.readyQueue.add(interpolaterNode);
             }
         }
     }
 
-    private void postTaskData(String url, TaskData taskData){
-        HttpEntity<TaskData> httpEntity = new HttpEntity<>(taskData, HttpUtil.jsonHeaders);
-        this.restTemplate.postForEntity(url, httpEntity, String.class);
-    }
-
     private void timeout(TaskData taskData){
-        this.interpolaterStore.exception(taskData.belongInterpolaterID);
+        this.interpolaterStore.working(taskData.belongInterpolaterID);
+        if(!taskData.couldBeDistributed()) return;
         /* 应该立即重新分发任务执行 */
         InterpolaterNode interpolaterNode = this.interpolaterStore.getRandomInterpolater();
         if(interpolaterNode != null){
@@ -144,17 +140,25 @@ public class DistributorManager implements StatusManage {
     public DoneTaskStatus doneTask(UUID taskID, List<LandEntity> landEntityList){
         /* null: 任务在超时后完成，undoneTaskManager没有该任务，自然就是null */
         TaskData taskData = this.undoneTaskManager.doneTask(taskID);
+        if(taskData == null) return null;
         this.taskUpdater.update(landEntityList)
-            .thenAcceptAsync(isSuccess -> {
+            .thenRun(() -> {
                 log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
-                InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
-                this.runningQueue.remove(interpolaterNode);
-                this.readyQueue.add(interpolaterNode);
             })
             .exceptionally(throwable -> {
+                /* 放弃taskData的更新 */
                 log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
-                this.undoneTaskManager.addUndoneTask(taskData);
+//                this.undoneTaskManager.addUndoneTask(taskData);
                 return null;
+            })
+            .thenRun(() -> {
+                InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
+                if(interpolaterNode.maxTaskNumber == interpolaterNode.getRestTaskNumber()){
+                    this.runningQueue.remove(interpolaterNode);
+                }
+                if(!this.readyQueue.contains(interpolaterNode)){
+                    this.readyQueue.add(interpolaterNode);
+                }
             });
         return new DoneTaskStatus(taskData);
     }
@@ -168,27 +172,21 @@ public class DistributorManager implements StatusManage {
             this.taskGenerator.doStart();
 
             /* 单线程定时执行 */
-            this.daemonExecutorService.execute(() -> {
-                ReentrantLock timeLock = new ReentrantLock();
-                Condition timeLockCondition = timeLock.newCondition();
-                while(statusEnum == StatusEnum.Run){
-                    try {
-                        /* 随机休眠56~64s，数学期望为60s，避免同一时间内网络上存在过多的流量，达到错峰通信的目的 */
-                        timeLock.lock();
-                        timeLockCondition.await(
-                            6 * 1000 + new Random().nextLong() % 8000, TimeUnit.MILLISECONDS
-                        );/* 56s + [0, 8000) ms */
-                        timeLock.unlock();
-                    } catch (InterruptedException ignored) {}
-
-                    /* 超时检测 */
-                    this.undoneTaskManager.timeout(10, this::timeout);
-
-                    /* 任务调度 */
-                    this.requestTask();
+            this.daemonExecutorService.scheduleAtFixedRate(() -> {
+                try{
+                    if(statusEnum == StatusEnum.Run){
+                        /* 心跳检测 */
+                        this.interpolaterStore.heartBeatDetected();
+                        /* 超时检测 */
+                        this.undoneTaskManager.timeout(3, this::timeout);
+                        /* 任务调度 */
+                        this.requestTask();
+                    }
+                }catch (Throwable e){
+                    System.out.println("doStart");
+                    e.printStackTrace();
                 }
-                log.warn("[distributor]: stop!");
-            });
+            }, 0, 10, TimeUnit.SECONDS);
         }
     }
 

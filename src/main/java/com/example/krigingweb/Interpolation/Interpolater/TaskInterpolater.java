@@ -14,6 +14,7 @@ class TaskInterpolater {
     private final double cellSize;
 
     private final ExecutorService executorService;
+    private final ExecutorService taskScheduleExecutorService = Executors.newSingleThreadExecutor();
     private final int concurrentNumber;
     private final TaskDataInterpolateException.Handler taskDataInterpolateExceptionHandler;
     private final TaskRebacker taskRebacker;
@@ -39,33 +40,20 @@ class TaskInterpolater {
             /* lambda是一个匿名内部类，该匿名内部类被GCRoot引用，GCRoot -> lambda -> taskData无法释放故内存泄漏 */
             CompletableFuture.runAsync(() -> {
                 this.interpolate(taskData).exceptionally(throwable -> {
-//                    throwable.printStackTrace();
+                    throwable.printStackTrace();
                     this.taskDataInterpolateExceptionHandler.handle(taskData);
                     return null;
                 });
-            });
-//            this.executorService.submit(() -> {
-//                this.interpolate(taskData).exceptionally(throwable -> {
-//                    this.taskDataInterpolateExceptionHandler.handle(taskData);
-//                    return null;
-//                });
-//            });
+            }, this.taskScheduleExecutorService);
         }
     }
 
     private CompletableFuture<Void> interpolate(TaskData taskData) {
-        CompletableFuture<Void> resCompletableFuture = new CompletableFuture<>();
-        InterpolaterUtil.interpolate(taskData, this.cellSize, 200, this.executorService, this.concurrentNumber)
-            .thenAccept(landEntityList -> {
-                landEntityList.forEach(landEntity -> landEntity.setMultiPolygon(null));
-                taskData.update(landEntityList);
-                this.taskRebacker.reback(taskData);
-                resCompletableFuture.complete(null);
-            }).exceptionally(throwable -> {
-                throwable.printStackTrace();
-                resCompletableFuture.completeExceptionally(new TaskDataInterpolateException(taskData));
-                return null;
-            });
-        return resCompletableFuture;
+        return InterpolaterUtil.interpolate(taskData, this.cellSize, 200, 25000, this.executorService, this.concurrentNumber)
+                .thenAccept(landEntityList -> {
+                    landEntityList.forEach(landEntity -> landEntity.setMultiPolygon(null));
+                    taskData.update(landEntityList);
+                    this.taskRebacker.reback(taskData);
+                });
     }
 }

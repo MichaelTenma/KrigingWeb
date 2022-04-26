@@ -2,13 +2,12 @@ package com.example.krigingweb.Interpolation.Distributor;
 
 import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 class InterpolaterStore {
     @Getter
     private final Map<UUID, InterpolaterNode> interpolaterNodeMap;
@@ -33,13 +32,13 @@ class InterpolaterStore {
         return this.interpolaterNodeMap.get(interpolaterID);
     }
 
-    public InterpolaterNode exception(UUID interpolaterID){
-        InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
-        if(interpolaterNode != null){
-            interpolaterNode.exception();
-        }
-        return interpolaterNode;
-    }
+//    public InterpolaterNode exception(UUID interpolaterID){
+//        InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
+//        if(interpolaterNode != null){
+//            interpolaterNode.exception();
+//        }
+//        return interpolaterNode;
+//    }
 
     public InterpolaterNode working(UUID interpolaterID){
         InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
@@ -58,5 +57,28 @@ class InterpolaterStore {
             interpolaterNode = this.interpolaterNodeMap.get(uuidArray[index]);
         }
         return interpolaterNode;
+    }
+
+    public void heartBeat(UUID interpolaterID){
+        InterpolaterNode interpolaterNode = this.getInterpolater(interpolaterID);
+        if(interpolaterNode != null){
+            interpolaterNode.heartBeat();
+            log.info("[DISTRIBUTOR]: Interpolater " + interpolaterID + " heartbeats.");
+        }
+    }
+
+    public void heartBeatDetected(){
+        if(this.interpolaterNodeMap.size() > 0){
+            List<UUID> removeList = new LinkedList<>();
+            for(Map.Entry<UUID, InterpolaterNode> entry : this.interpolaterNodeMap.entrySet()){
+                if(!entry.getValue().isValid()){
+                    removeList.add(entry.getKey());
+                }
+            }
+            removeList.forEach(uuid -> {
+                this.interpolaterNodeMap.remove(uuid);
+                log.warn("[DISTRIBUTOR]: Interpolater " + uuid + " has been removed for no heartbeat!");
+            });
+        }
     }
 }
