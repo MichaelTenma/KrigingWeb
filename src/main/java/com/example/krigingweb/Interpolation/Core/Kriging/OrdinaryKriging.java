@@ -2,10 +2,7 @@ package com.example.krigingweb.Interpolation.Core.Kriging;
 
 import com.example.krigingweb.Interpolation.Core.Kriging.Variogram.SphericalVariogram;
 import com.example.krigingweb.Interpolation.Core.Regressor;
-import org.apache.commons.math3.linear.DiagonalMatrix;
-import org.apache.commons.math3.linear.EigenDecomposition;
-import org.apache.commons.math3.linear.MatrixUtils;
-import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.*;
 
 public class OrdinaryKriging implements Regressor {
     private double[][] u;
@@ -34,27 +31,25 @@ public class OrdinaryKriging implements Regressor {
         }
         M[n][n] = 0;
 
-        RealMatrix MMatrix = MatrixUtils.createRealMatrix(M);
-//        DoubleMatrix2D MMatrix = DoubleFactory2D.dense.make(M);
-        EigenDecomposition evd = new EigenDecomposition(MMatrix);
-//        EigenvalueDecomposition evd = new EigenvalueDecomposition(MMatrix);
-
-        double[] DDiagonal = evd.getRealEigenvalues();
-        for(int i = 0;i < DDiagonal.length;i++){
-            DDiagonal[i] = 1.0 / DDiagonal[i];
+        RealMatrix invM = null;
+        {
+            RealMatrix MMatrix = MatrixUtils.createRealMatrix(M);
+            EigenDecomposition evd = new EigenDecomposition(MMatrix);
+            if(evd.getSolver().isNonSingular()){
+                double[] DDiagonal = evd.getRealEigenvalues();
+                for(int i = 0;i < DDiagonal.length;i++){
+                    DDiagonal[i] = 1.0 / DDiagonal[i];
+                }
+                DiagonalMatrix invD = new DiagonalMatrix(DDiagonal);
+                RealMatrix V = evd.getV();
+                RealMatrix VT = evd.getVT();
+                invM = V.multiply(invD).multiply(VT);
+            }else{
+                SingularValueDecomposition svd = new SingularValueDecomposition(MMatrix);
+                invM = svd.getSolver().getInverse();
+            }
         }
-//        DiagonalMatrix DDiagonal = new DiagonalMatrix(evd.getRealEigenvalues());
-        DiagonalMatrix invD = new DiagonalMatrix(DDiagonal);
-//        DoubleMatrix1D DDiagonalInverse = evd.getRealEigenvalues().assign(v -> 1.0 / v);
-//        DoubleMatrix2D invD = DoubleFactory2D.dense.diagonal(DDiagonalInverse);
 
-        RealMatrix V = evd.getV();
-        RealMatrix VT = evd.getVT();
-//        DoubleMatrix2D V = evd.getV();
-//        DoubleMatrix2D VT = Algebra.DEFAULT.transpose(V);
-
-        RealMatrix invM = V.multiply(invD).multiply(VT);
-//        DoubleMatrix2D invM = Algebra.DEFAULT.mult(Algebra.DEFAULT.mult(V, invD), VT);
         RealMatrix ZMatrix;
         {
             double[] ZCopy = new double[Z.length + 1];
@@ -62,10 +57,8 @@ public class OrdinaryKriging implements Regressor {
                 ZCopy[i] = Z[i];
             }
             ZCopy[ZCopy.length - 1] = 0;
-//            ZMatrix = DoubleFactory2D.dense.make(ZCopy);
             ZMatrix = MatrixUtils.createRowRealMatrix(ZCopy);
         }
-//        this.ZT_invM = Algebra.DEFAULT.mult(ZMatrix,invM);
         this.ZT_invM = ZMatrix.multiply(invM);
     }
 

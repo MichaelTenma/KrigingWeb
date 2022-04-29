@@ -62,8 +62,8 @@ public class SemiCloud<V extends VariogramPredictor> {
             tmpS[0][0] = 0;
             tmpS[0][1] = 0;
 
-//            index = Math.min(index, tmpS.length / 2) + 1;
-            index ++;
+            index = Math.min(index, tmpS.length / 2) + 1;
+//            index ++;
             this.S = Arrays.copyOfRange(tmpS, 1, index);
         }
     }
@@ -89,7 +89,7 @@ public class SemiCloud<V extends VariogramPredictor> {
         V minVariogramPredictor = (V) variogramPredictor.clone();
         double minWeightedRMSE = variogramPredictor.loss(S);
         double left = S[0][0], right = S[S.length - 1][0];
-        int groupNumber = 15;
+        int groupNumber = 8;
         while(true){
             final double gap = (right - left) / groupNumber;
             double minRange = 0;
@@ -104,7 +104,8 @@ public class SemiCloud<V extends VariogramPredictor> {
                 variogramPredictor.OLS(rangeIndex, cur, S);
 
                 /* weighted RMSE */
-                double weightedRMSE = variogramPredictor.loss(Arrays.copyOfRange(S, 0, rangeIndex + 1));
+//                double weightedRMSE = variogramPredictor.loss(Arrays.copyOfRange(S, 0, rangeIndex + 1));
+                double weightedRMSE = variogramPredictor.loss(S);
                 if(weightedRMSE < minWeightedRMSE){
                     minWeightedRMSE = weightedRMSE;
                     minVariogramPredictor.update(variogramPredictor);
@@ -125,7 +126,7 @@ public class SemiCloud<V extends VariogramPredictor> {
             if(sum <= 1) break;
         }
 
-//        System.out.println(this.toString() + minVariogramPredictor);
+        System.out.println(this.toString() + minVariogramPredictor);
         double[] predictSemiMatrix = new double[L.length + 1];
         for(int k = 0; k < predictSemiMatrix.length - 1; k++){
             predictSemiMatrix[k] = minVariogramPredictor.predict(L[k]);

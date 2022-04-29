@@ -24,12 +24,29 @@ public abstract class AbstractTaskGenerator implements StatusManage, Runnable {
         12207881.844549, 13045561.012768, 2939884.095192, 2301216.219071
     ).bufferFromBorder(bias);
 
-    private static final int rowNum = 128;// N
-    private static final int colNum = 64;// M
+    private static final int rowNum;// N
+    private static final int colNum;// M
 
     /* 向上取整，避免由于双精度浮点运算带来的舍入误差而导致某些地块不被涵盖在矩形框内 */
-    private static final double x_gap = Math.ceil(domainRectangle.getWidth() / colNum);
-    private static final double y_gap = Math.ceil(domainRectangle.getHeight() / rowNum);
+    private static final double x_gap;
+    private static final double y_gap;
+
+    static {
+        final double expectedArea = 400_000000;/* 400平方公里 */
+        final double expectedWidth = Math.sqrt(expectedArea);
+        final double expectedHeight = expectedWidth;
+
+        x_gap = expectedWidth;
+        y_gap = expectedHeight;
+
+        colNum = (int)Math.ceil(domainRectangle.getWidth() / expectedWidth);
+        rowNum = (int)Math.ceil(domainRectangle.getHeight() / expectedHeight);
+
+        log.info(
+            "[DISTRIBUTOR]: total row " + rowNum + ", col " + colNum +
+            ", x_gap " + x_gap + ", y_gap " + y_gap + ". "
+        );
+    }
 
     /* 线程共享 */
     private static StatusEnum statusEnum = StatusEnum.Stop;

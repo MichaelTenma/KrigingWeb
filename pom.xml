@@ -85,11 +85,11 @@
             <version>1.18.1</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.edwardraff</groupId>
-            <artifactId>JSAT</artifactId>
-            <version>0.0.9</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.edwardraff</groupId>-->
+<!--            <artifactId>JSAT</artifactId>-->
+<!--            <version>0.0.9</version>-->
+<!--        </dependency>-->
 
         <!-- https://mvnrepository.com/artifact/colt/colt -->
 <!--        <dependency>-->
