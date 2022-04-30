@@ -78,10 +78,10 @@ public class InterpolaterManager {
     private void register(){
         this.daemonExecutorService.schedule(() -> {
             RegisterRequest registerRequest = new RegisterRequest(
-                    this.interpolaterID, "/interpolater/addTask",
-                    this.interpolaterProperties.getPort(),
-                    this.interpolaterProperties.getCallbackHttpEnum(),
-                    this.interpolaterProperties.getConcurrentNumber()
+                this.interpolaterID, "/interpolater/addTask",
+                this.interpolaterProperties.getPort(),
+                this.interpolaterProperties.getCallbackHttpEnum(),
+                this.interpolaterProperties.getConcurrentNumber()
             );
             HttpEntity<RegisterRequest> httpEntity = new HttpEntity<>(registerRequest, HttpUtil.jsonHeaders);
 

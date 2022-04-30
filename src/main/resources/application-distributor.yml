@@ -1,9 +1,10 @@
 distributor:
   enable: true
-  undoneTaskLimitPerInterpolater: 10
-  totalTaskGeneratorThreadNumber: 1
+  totalTaskGeneratorThreadNumber: 2
   totalTaskUpdaterThreadNumber: 2
-  timeoutMinutes: 15
+  totalTaskDistributorPostThreadNumber: 8
+  taskStoreMaxCount: 30
+  timeoutMinutes: 5
 
 spring:
   datasource:

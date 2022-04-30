@@ -14,8 +14,4 @@ public class InterpolationTask{
         this.setSoilNutrientMethod = setSoilNutrientMethod;
         this.soilNutrientEnum = soilNutrientEnum;
     }
-
-//    public void free(){
-//        this.regressor.free();
-//    }
 }

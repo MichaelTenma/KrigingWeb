@@ -2,7 +2,6 @@ server.port: 8100
 interpolater:
   enable: true
   concurrentNumber: 8
-  distributorURL: http://127.0.0.1:8099
+  distributorURL: http://192.168.187.230:8099
   callbackHttpEnum: http
   cellSize: 30
-  maxInvalidNum: 3

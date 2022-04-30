@@ -1,17 +1,17 @@
 distributor:
   enable: true
-  undoneTaskLimitPerInterpolater: 6
   totalTaskGeneratorThreadNumber: 1
   totalTaskUpdaterThreadNumber: 1
+  totalTaskDistributorPostThreadNumber: 8
+  taskStoreMaxCount: 2
   timeoutMinutes: 5
 
 interpolater:
   enable: true
-  concurrentNumber: 8
+  concurrentNumber: 1
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 30
-  maxInvalidNum: 3
 
 spring:
   datasource:

@@ -29,9 +29,6 @@ public class InterpolaterProperties {
     @Value("${interpolater.cellSize}")
     private double cellSize = 300;
 
-    @Value("${interpolater.maxInvalidNum}")
-    private int maxInvalidNum = 1;
-
     @Autowired
     public InterpolaterProperties(){}
 

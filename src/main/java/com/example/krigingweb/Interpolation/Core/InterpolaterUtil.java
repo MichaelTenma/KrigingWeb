@@ -5,8 +5,8 @@ import com.example.krigingweb.Entity.NutrientFilter;
 import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
-import com.example.krigingweb.Interpolation.Core.Kriging.MathUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.OrdinaryKriging;
+import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -66,7 +66,7 @@ public class InterpolaterUtil {
                 return null;
             })).toArray(CompletableFuture<?>[]::new);
 
-        CompletableFuture.allOf(splitCompletableFutureArray).thenRunAsync(() -> {
+        CompletableFuture.allOf(splitCompletableFutureArray).thenRun(() -> {
             resCompletableFuture.complete(taskData.getLandEntityList());
         });
         /* 释放内存 */

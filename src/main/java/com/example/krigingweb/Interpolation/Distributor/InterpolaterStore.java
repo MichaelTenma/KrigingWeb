@@ -32,18 +32,10 @@ class InterpolaterStore {
         return this.interpolaterNodeMap.get(interpolaterID);
     }
 
-//    public InterpolaterNode exception(UUID interpolaterID){
-//        InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
-//        if(interpolaterNode != null){
-//            interpolaterNode.exception();
-//        }
-//        return interpolaterNode;
-//    }
-
     public InterpolaterNode working(UUID interpolaterID){
         InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
         if(interpolaterNode != null){
-            interpolaterNode.working();
+            interpolaterNode.doneTask();
         }
         return interpolaterNode;
     }

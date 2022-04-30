@@ -13,18 +13,20 @@ public class DistributorProperties {
     @Value(value = "${distributor.enable}")
     private boolean enable = false;
 
-    /* 单个interpolater未完成插值任务的限制数量 */
-    @Value(value = "${distributor.undoneTaskLimitPerInterpolater}")
-    private int undoneTaskLimitPerInterpolater = 100;
-
     @Value(value = "${distributor.timeoutMinutes}")
-    private long timeoutMinutes = 15;
+    private long timeoutMinutes = 3;
 
     @Value(value = "${distributor.totalTaskGeneratorThreadNumber}")
     private int totalTaskGeneratorThreadNumber = 1;
 
     @Value(value = "${distributor.totalTaskUpdaterThreadNumber}")
-    private int totalTaskUpdaterThreadNumber = 2;
+    private int totalTaskUpdaterThreadNumber = 1;
+
+    @Value(value = "${distributor.totalTaskDistributorPostThreadNumber}")
+    private int totalTaskDistributorPostThreadNumber = 1;
+
+    @Value(value = "${distributor.taskStoreMaxCount}")
+    private int taskStoreMaxCount = 20;
 
     @Autowired
     public DistributorProperties(){}

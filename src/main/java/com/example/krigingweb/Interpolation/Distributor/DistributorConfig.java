@@ -35,9 +35,12 @@ public class DistributorConfig {
     public DistributorManager distributorManager(){
         int totalTaskGeneratorThreadNumber = this.distributorProperties.getTotalTaskGeneratorThreadNumber();
         int totalTaskUpdaterThreadNumber = this.distributorProperties.getTotalTaskUpdaterThreadNumber();
+        int totalTaskDistributorPostThreadNumber = this.distributorProperties.getTotalTaskDistributorPostThreadNumber();
+        long timeoutMinutes = this.distributorProperties.getTimeoutMinutes();
+        int taskStoreMaxCount = this.distributorProperties.getTaskStoreMaxCount();
         return new DistributorManager(
-            totalTaskGeneratorThreadNumber, totalTaskUpdaterThreadNumber,
-            this.landService, this.samplePointService, this.restTemplate
+            totalTaskGeneratorThreadNumber, totalTaskUpdaterThreadNumber, totalTaskDistributorPostThreadNumber,
+            timeoutMinutes, taskStoreMaxCount, this.landService, this.samplePointService, this.restTemplate
         );
     }
 

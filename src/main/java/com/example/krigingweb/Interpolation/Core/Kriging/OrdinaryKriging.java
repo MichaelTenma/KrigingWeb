@@ -1,6 +1,7 @@
 package com.example.krigingweb.Interpolation.Core.Kriging;
 
 import com.example.krigingweb.Interpolation.Core.Kriging.Variogram.SphericalVariogram;
+import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
 import com.example.krigingweb.Interpolation.Core.Regressor;
 import org.apache.commons.math3.linear.*;
 

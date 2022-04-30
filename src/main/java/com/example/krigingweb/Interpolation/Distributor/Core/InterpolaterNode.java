@@ -17,15 +17,14 @@ public class InterpolaterNode {
 
     private ZonedDateTime lastHeartBeatTime = ZonedDateTime.now();
 
-    /* 剩余容许异常次数，连续三次异常则该结点瘫痪 */
-//    private final AtomicInteger restExceptionNumber = new AtomicInteger(20);
     public InterpolaterNode(UUID id, int maxTaskNumber, String url) {
         this.id = id;
         this.maxTaskNumber = maxTaskNumber;
         this.restTaskNumber = new AtomicInteger(maxTaskNumber);
         this.url = url;
     }
-    public void working(){
+
+    public void doneTask(){
         this.restTaskNumber.incrementAndGet();
     }
 
@@ -35,14 +34,21 @@ public class InterpolaterNode {
         restTemplate.postForEntity(url, httpEntity, String.class);
     }
 
-    public int getRestTaskNumber(){
-        return this.restTaskNumber.get();
+    public boolean isFullTask(){
+        return this.restTaskNumber.get() <= 0;
+    }
+
+    public boolean isEmptyTask(){
+        return this.restTaskNumber.get() >= this.maxTaskNumber;
+    }
+
+    public boolean hasTask(){
+        return this.restTaskNumber.get() > 0;
     }
 
     public void heartBeat(){
         this.lastHeartBeatTime = ZonedDateTime.now();
     }
-
     public boolean isValid(){
         return ZonedDateTime.now().minusMinutes(3).compareTo(this.lastHeartBeatTime) <= 0;
     }

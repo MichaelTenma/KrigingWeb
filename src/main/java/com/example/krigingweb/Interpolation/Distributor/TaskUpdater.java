@@ -42,6 +42,6 @@ class TaskUpdater {
             if(i == 5){
                 throw new RuntimeException();
             }
-        });
+        }, this.updateExecutorService);
     }
 }

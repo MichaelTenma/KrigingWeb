@@ -1,5 +1,7 @@
 package com.example.krigingweb.Interpolation.Core.Kriging;
 
+import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
+
 import java.util.Arrays;
 
 public class SemiCloud<V extends VariogramPredictor> {
@@ -126,7 +128,7 @@ public class SemiCloud<V extends VariogramPredictor> {
             if(sum <= 1) break;
         }
 
-        System.out.println(this.toString() + minVariogramPredictor);
+//        System.out.println(this.toString() + minVariogramPredictor);
         double[] predictSemiMatrix = new double[L.length + 1];
         for(int k = 0; k < predictSemiMatrix.length - 1; k++){
             predictSemiMatrix[k] = minVariogramPredictor.predict(L[k]);

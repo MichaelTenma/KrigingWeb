@@ -1,6 +1,6 @@
 package com.example.krigingweb.Interpolation.Core;
 
-import com.example.krigingweb.Math.MathUtil;
+import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;

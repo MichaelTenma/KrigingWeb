@@ -1,9 +1,6 @@
 package com.example.krigingweb.Interpolation.Core.Kriging.Variogram;
 
 import com.example.krigingweb.Interpolation.Core.Kriging.VariogramPredictor;
-import com.example.krigingweb.Math.OLSCalculater;
-import org.apache.commons.math3.linear.MatrixUtils;
-
 import java.util.ArrayList;
 import java.util.List;
 

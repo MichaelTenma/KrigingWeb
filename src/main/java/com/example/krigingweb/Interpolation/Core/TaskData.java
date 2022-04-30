@@ -4,6 +4,7 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Kriging.VariogramPredictor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.time.ZonedDateTime;
@@ -15,8 +16,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class TaskData{
     public UUID taskID;
+
     public UUID belongInterpolaterID;
     private ZonedDateTime createTime;
     private ZonedDateTime postTime;
@@ -40,6 +43,14 @@ public class TaskData{
         this.landEntityList = landEntityList;
         this.errorMap = errorMap;
         this.variogramPredictor = variogramPredictor;
+
+        this.samplePointEntityList.forEach(samplePointEntity -> {
+            samplePointEntity.setSMC(null);
+            samplePointEntity.setDMC(null);
+            samplePointEntity.setYMC(null);
+            samplePointEntity.setXMC(null);
+            samplePointEntity.setCMC(null);
+        });
     }
 
     public TaskData(List<SamplePointEntity> samplePointEntityList, List<LandEntity> landEntityList) {

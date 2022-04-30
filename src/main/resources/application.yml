@@ -3,10 +3,13 @@ server.port: 8099
 #  time-zone: GMT+8
 #  date-format: yyyy-MM-dd HH:mm:ss
 
+
 #output to a temp_folder/file(give your file path here)
 logging:
   file:
     path: D:/application.log
 spring:
+  jackson:
+    default-property-inclusion: non_null
   profiles:
     active: both
