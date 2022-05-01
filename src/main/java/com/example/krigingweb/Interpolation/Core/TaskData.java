@@ -4,9 +4,13 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.Kriging.VariogramPredictor;
+import com.example.krigingweb.Serializer.UUIDJsonConverter;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -17,14 +21,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Data
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class TaskData{
+public class TaskData implements MapQueueEntry<UUID>, Serializable {
+    @JsonSerialize(using = UUIDJsonConverter.Serializer.class)
+    @JsonDeserialize(using = UUIDJsonConverter.Deserializer.class)
     public UUID taskID;
 
+    @JsonSerialize(using = UUIDJsonConverter.Serializer.class)
+    @JsonDeserialize(using = UUIDJsonConverter.Deserializer.class)
     public UUID belongInterpolaterID;
     private ZonedDateTime createTime;
     private ZonedDateTime postTime;
-    private List<SamplePointEntity> samplePointEntityList;
-    private List<LandEntity> landEntityList;
+    private List<SamplePointEntity> samplePoints;
+    private List<LandEntity> lands;
 
     private Map<SoilNutrientEnum, ErrorInfo> errorMap;
     private VariogramPredictor variogramPredictor;
@@ -32,31 +40,34 @@ public class TaskData{
 
     public TaskData(
         UUID taskID, ZonedDateTime createTime,
-        List<SamplePointEntity> samplePointEntityList,
-        List<LandEntity> landEntityList,
+        List<SamplePointEntity> samplePoints,
+        List<LandEntity> lands,
         Map<SoilNutrientEnum, ErrorInfo> errorMap,
         VariogramPredictor variogramPredictor
     ) {
         this.taskID = taskID;
         this.createTime = createTime;
-        this.samplePointEntityList = samplePointEntityList;
-        this.landEntityList = landEntityList;
+        this.samplePoints = samplePoints;
+        this.lands = lands;
         this.errorMap = errorMap;
         this.variogramPredictor = variogramPredictor;
 
-        this.samplePointEntityList.forEach(samplePointEntity -> {
+        this.samplePoints.forEach(samplePointEntity -> {
             samplePointEntity.setSMC(null);
             samplePointEntity.setDMC(null);
             samplePointEntity.setYMC(null);
             samplePointEntity.setXMC(null);
             samplePointEntity.setCMC(null);
+            samplePointEntity.setDistance(null);
+            samplePointEntity.setId(null);
+            samplePointEntity.setTime(null);
         });
     }
 
-    public TaskData(List<SamplePointEntity> samplePointEntityList, List<LandEntity> landEntityList) {
+    public TaskData(List<SamplePointEntity> samplePoints, List<LandEntity> lands) {
         this(
             UUID.randomUUID(), ZonedDateTime.now(),
-            samplePointEntityList, landEntityList,
+                samplePoints, lands,
             null, null
         );
     }
@@ -77,8 +88,8 @@ public class TaskData{
     public void invalid(){this.maxInvalidNumber.decrementAndGet();}
 
     public void update(List<LandEntity> landEntityList){
-        this.landEntityList = landEntityList;
-        this.samplePointEntityList = null;
+        this.lands = landEntityList;
+        this.samplePoints = null;
     }
 
     public void updatePostTime() {
@@ -96,6 +107,11 @@ public class TaskData{
         }
         sb.setCharAt(sb.length() - 1, ' ');
         return sb.toString();
+    }
+
+    @Override
+    public UUID mapQueueEntryKey() {
+        return this.taskID;
     }
 
     @Getter

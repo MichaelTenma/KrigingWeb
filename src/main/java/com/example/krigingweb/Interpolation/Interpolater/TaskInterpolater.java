@@ -5,9 +5,7 @@ import com.example.krigingweb.Interpolation.Core.InterpolaterUtil;
 import com.example.krigingweb.Interpolation.Interpolater.Exception.TaskDataInterpolateException;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
-import java.lang.ref.WeakReference;
 import java.util.concurrent.*;
-import java.util.function.Function;
 
 class TaskInterpolater {
 
@@ -51,7 +49,7 @@ class TaskInterpolater {
     private CompletableFuture<Void> interpolate(TaskData taskData) {
         return InterpolaterUtil.interpolate(taskData, this.cellSize, 200, 25000, this.executorService, this.concurrentNumber)
                 .thenAccept(landEntityList -> {
-                    landEntityList.forEach(landEntity -> landEntity.setMultiPolygon(null));
+                    landEntityList.forEach(landEntity -> landEntity.setGeom(null));
                     taskData.update(landEntityList);
                     this.taskRebacker.reback(taskData);
                 });

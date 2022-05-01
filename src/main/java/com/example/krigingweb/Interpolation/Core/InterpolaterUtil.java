@@ -67,7 +67,7 @@ public class InterpolaterUtil {
             })).toArray(CompletableFuture<?>[]::new);
 
         CompletableFuture.allOf(splitCompletableFutureArray).thenRun(() -> {
-            resCompletableFuture.complete(taskData.getLandEntityList());
+            resCompletableFuture.complete(taskData.getLands());
         });
         /* 释放内存 */
         return resCompletableFuture;
@@ -76,7 +76,7 @@ public class InterpolaterUtil {
     private static List<List<LandEntity>> splitTask(TaskData taskData, int concurrentNumber){
         List<List<LandEntity>> mapLandEntityList;
         {
-            List<LandEntity> landEntityList = taskData.getLandEntityList();
+            List<LandEntity> landEntityList = taskData.getLands();
             concurrentNumber = Math.min(concurrentNumber, landEntityList.size());
             mapLandEntityList = new ArrayList<>(concurrentNumber);
             final int eachLandNumber = (int) Math.ceil(landEntityList.size() * 1.0 / concurrentNumber);
@@ -105,7 +105,7 @@ public class InterpolaterUtil {
         final InterpolationTask[] interpolationTaskArray
     ) throws InvocationTargetException, IllegalAccessException {
         final int perNum = each_u_array.length;
-        final Geometry geometry = landEntity.getMultiPolygon();
+        final Geometry geometry = landEntity.getGeom();
         final Envelope envelope = geometry.getEnvelopeInternal();
         final double[] nutrientArray = new double[nutrientLength];
 
@@ -166,7 +166,7 @@ public class InterpolaterUtil {
 
         /* 应该对采样点各个指标进行过滤 */
 //        System.out.println("\n指标名称： " + soilNutrientEnum.name);
-        List<SamplePointEntity> samplePointEntityList = taskData.getSamplePointEntityList();
+        List<SamplePointEntity> samplePointEntityList = taskData.getSamplePoints();
         List<SamplePointEntity> filterSamplePointEntityList = samplePointEntityList.stream()
                 .filter(NutrientFilter.get(soilNutrientEnum)).collect(Collectors.toList());
 

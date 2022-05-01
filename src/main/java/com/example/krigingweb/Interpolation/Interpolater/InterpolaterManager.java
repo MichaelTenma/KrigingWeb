@@ -1,9 +1,7 @@
 package com.example.krigingweb.Interpolation.Interpolater;
 
-import com.example.krigingweb.Interpolation.Basic.Enum.StatusEnum;
 import com.example.krigingweb.Interpolation.Basic.HttpUtil;
 import com.example.krigingweb.Interpolation.Core.TaskData;
-import com.example.krigingweb.Interpolation.Interpolater.Exception.MaxInvalidNutrientValueNumException;
 import com.example.krigingweb.Interpolation.Interpolater.Exception.TaskDataInterpolateException;
 import com.example.krigingweb.Request.RegisterRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -12,13 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 public class InterpolaterManager {

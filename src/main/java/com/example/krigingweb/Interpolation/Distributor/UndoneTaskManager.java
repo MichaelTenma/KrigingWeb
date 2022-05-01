@@ -1,19 +1,16 @@
 package com.example.krigingweb.Interpolation.Distributor;
 
+import com.example.krigingweb.Interpolation.Core.ConcurrentMapQueue;
+import com.example.krigingweb.Interpolation.Core.MapQueue;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import lombok.extern.slf4j.Slf4j;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 class UndoneTaskManager {
     /* 该队列用于超时控制 */
-    private final Queue<TaskData> undoneTaskQueue = new ConcurrentLinkedQueue<>();
-    private final Map<UUID, TaskData> undoneTaskMap = new ConcurrentHashMap<>();
-    private final AtomicInteger taskCount = new AtomicInteger(0);
+    private final MapQueue<UUID, TaskData> undoneTaskMapQueue = new ConcurrentMapQueue<>();
 
     @FunctionalInterface
     public interface TimeoutHandler {
@@ -21,9 +18,7 @@ class UndoneTaskManager {
     }
 
     public void addUndoneTask(TaskData taskData){
-        this.undoneTaskQueue.add(taskData);
-        this.undoneTaskMap.put(taskData.taskID, taskData);
-        this.taskCount.incrementAndGet();
+        this.undoneTaskMapQueue.add(taskData);
     }
 
     public TaskData doneTask(UUID taskID){
@@ -31,18 +26,13 @@ class UndoneTaskManager {
     }
 
     private TaskData removeTask(UUID taskID){
-        TaskData taskData = this.undoneTaskMap.remove(taskID);
-        if(taskData != null){
-            this.undoneTaskQueue.remove(taskData);
-            this.taskCount.decrementAndGet();
-        }
-        return taskData;
+        return this.undoneTaskMapQueue.removeByKey(taskID);
     }
 
     public void timeout(long minutes, TimeoutHandler timeoutHandler){
         ZonedDateTime boundZonedDateTime = ZonedDateTime.now().minusMinutes(minutes);
         while(true){
-            TaskData taskData = this.undoneTaskQueue.peek();
+            TaskData taskData = this.undoneTaskMapQueue.peek();
             if(taskData == null) break;
 
             if(taskData.isTimeOut(boundZonedDateTime) || !taskData.couldBeDistributed()){
@@ -59,7 +49,7 @@ class UndoneTaskManager {
     }
 
     public int getCount(){
-        return this.taskCount.get();
+        return this.undoneTaskMapQueue.size();
     }
 }
 

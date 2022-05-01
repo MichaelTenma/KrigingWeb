@@ -14,15 +14,13 @@ import org.locationtech.jts.io.WKBWriter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Base64;
 
 public final class GeometryJsonConverter {
     public static class Serializer<T extends Geometry> extends JsonSerializer<T>{
         @Override
         public void serialize(T geometry, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
-            jsonGenerator.writeString(geometry.toString());
-//            jsonGenerator.writeString(
-//                WKBWriter.toHex(GeoUtil.wkbWriter.write(geometry))
-//            );
+            jsonGenerator.writeBinary(GeoUtil.toBytes(geometry));
         }
     }
 
@@ -31,13 +29,7 @@ public final class GeometryJsonConverter {
         public T deserialize(
             JsonParser jsonParser, DeserializationContext deserializationContext
         ) throws IOException {
-            T geometry = null;
-            try {
-                geometry = (T)GeoUtil.wktReader.read(jsonParser.getValueAsString());
-//                geometry = (T)GeoUtil.wkbReader.read(WKBReader.hexToBytes(jsonParser.getValueAsString()));
-            } catch (ParseException ignored) {
-            }
-            return geometry;
+            return GeoUtil.toGeometry(jsonParser.getBinaryValue());
         }
     }
 }

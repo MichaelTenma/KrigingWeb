@@ -73,21 +73,21 @@ public class DistributorController {
     }
 
     @GetMapping("/interpolaterException")
-    public ResponseEntity<String> interpolaterException(String interpolaterID) throws EmptyException {
+    public ResponseEntity<String> interpolaterException(@RequestParam UUID interpolaterID) throws EmptyException {
         EmptyException.check("interpolaterID", interpolaterID);
 
-        UUID id = UUID.fromString(interpolaterID);
-        this.distributorManager.deleteInterpolater(id);
-        log.warn("[EXCEPTIONAL INTERPOLATER]: " + id);
+//        UUID id = UUID.fromString(interpolaterID);
+        this.distributorManager.deleteInterpolater(interpolaterID);
+        log.warn("[EXCEPTIONAL INTERPOLATER]: " + interpolaterID);
         return new ResponseEntity<>("标记插值结点异常成功！", HttpStatus.OK);
     }
 
     @GetMapping("/heartBeat")
-    public ResponseEntity<String> heartBeat(String interpolaterID) throws EmptyException {
+    public ResponseEntity<String> heartBeat(@RequestParam UUID interpolaterID) throws EmptyException {
         EmptyException.check("interpolaterID", interpolaterID);
-        UUID id = UUID.fromString(interpolaterID);
-        this.distributorManager.heartBeat(id);
-        log.info("[HEARTBEAT INTERPOLATER]: " + id);
+//        UUID id = UUID.fromString(interpolaterID);
+        this.distributorManager.heartBeat(interpolaterID);
+        log.info("[HEARTBEAT INTERPOLATER]: " + interpolaterID);
         return new ResponseEntity<>("插值结点心跳检测成功！", HttpStatus.OK);
     }
 

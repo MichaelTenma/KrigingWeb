@@ -6,8 +6,6 @@ import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Request.DoneTaskRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
 
@@ -38,7 +36,7 @@ class TaskRebacker {
         log.info("[INTERPOLATER TASK]: taskID: " + taskData.taskID + ", " + taskData.errorMapToString());
         String url = this.distributorURL + "/distributor/doneTask";
         DoneTaskRequest doneTaskRequest
-                = new DoneTaskRequest(interpolaterID, taskData.taskID, taskData.getLandEntityList());
+                = new DoneTaskRequest(interpolaterID, taskData.taskID, taskData.getLands());
         HttpEntity<DoneTaskRequest> httpEntity
                 = new HttpEntity<>(doneTaskRequest, HttpUtil.jsonHeaders);
 

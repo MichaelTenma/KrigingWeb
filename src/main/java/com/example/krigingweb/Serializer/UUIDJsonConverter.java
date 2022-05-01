@@ -1,7 +1,5 @@
 package com.example.krigingweb.Serializer;
 
-import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -15,7 +13,7 @@ public final class UUIDJsonConverter {
     public static class Serializer extends JsonSerializer<UUID> {
         @Override
         public void serialize(UUID uuid, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
-            jsonGenerator.writeString(uuid.toString());
+            jsonGenerator.writeBinary(UUIDUtils.asBytes(uuid));
         }
     }
 
@@ -24,7 +22,7 @@ public final class UUIDJsonConverter {
         public UUID deserialize(
             JsonParser jsonParser, DeserializationContext deserializationContext
         ) throws IOException {
-            return UUID.fromString(jsonParser.getValueAsString());
+            return UUIDUtils.asUuid(jsonParser.getBinaryValue());
         }
     }
 }

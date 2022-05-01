@@ -30,8 +30,8 @@ public class InterpolaterController {
         this.interpolaterManager.addTask(taskData);
         log.info(
             "[INTERPOLATER]: add task " + taskData.taskID +
-            ". SamplePoints: " + taskData.getSamplePointEntityList().size() +
-            ", LandEntities: " + taskData.getLandEntityList().size()
+            ". SamplePoints: " + taskData.getSamplePoints().size() +
+            ", LandEntities: " + taskData.getLands().size()
         );
 //        try {
 //            Thread.sleep(2000);

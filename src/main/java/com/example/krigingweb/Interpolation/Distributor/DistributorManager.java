@@ -3,6 +3,8 @@ package com.example.krigingweb.Interpolation.Distributor;
 import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Interpolation.Basic.Enum.StatusEnum;
 import com.example.krigingweb.Interpolation.Basic.StatusManage;
+import com.example.krigingweb.Interpolation.Core.ConcurrentMapQueue;
+import com.example.krigingweb.Interpolation.Core.MapQueue;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
@@ -28,8 +30,8 @@ public class DistributorManager implements StatusManage {
 
     private final RestTemplate restTemplate;
 
-    private final Queue<InterpolaterNode> readyQueue = new LinkedList<>();
-    private final Queue<InterpolaterNode> runningQueue = new LinkedList<>();
+    private final MapQueue<UUID, InterpolaterNode> readyQueue = new ConcurrentMapQueue<>();
+    private final MapQueue<UUID, InterpolaterNode> runningQueue = new ConcurrentMapQueue<>();
 
     private final ScheduledExecutorService daemonExecutorService= Executors.newScheduledThreadPool(
         1, new CustomizableThreadFactory("distributor-daemon-")
@@ -126,6 +128,7 @@ public class DistributorManager implements StatusManage {
 
         if(interpolaterNode == null) return;
         interpolaterNode.doneTask();
+        System.out.println("[working]: " + interpolaterNode.id);
 
         this.transferFromReadyToRunning(interpolaterNode);
         if(!taskData.couldBeDistributed()) return;
@@ -136,10 +139,8 @@ public class DistributorManager implements StatusManage {
     private void transferFromReadyToRunning(InterpolaterNode interpolaterNode){
         if(interpolaterNode != null){
             synchronized (interpolaterNode){
-                if(!this.runningQueue.contains(interpolaterNode)) {
-                    this.runningQueue.add(interpolaterNode);
-                }
-                if(!interpolaterNode.isFullTask() && !this.readyQueue.contains(interpolaterNode)){
+                this.runningQueue.add(interpolaterNode);
+                if(!interpolaterNode.isFullTask()){
                     this.readyQueue.add(interpolaterNode);
                 }
             }
@@ -150,9 +151,9 @@ public class DistributorManager implements StatusManage {
         if(interpolaterNode != null){
             synchronized (interpolaterNode){
                 if(interpolaterNode.isEmptyTask()){
-                    this.runningQueue.remove(interpolaterNode);
+                    this.runningQueue.removeByValue(interpolaterNode);
                 }
-                if(!interpolaterNode.isFullTask() && !this.readyQueue.contains(interpolaterNode)){
+                if(!interpolaterNode.isFullTask()){
                     this.readyQueue.add(interpolaterNode);
                 }
             }
@@ -171,6 +172,7 @@ public class DistributorManager implements StatusManage {
         if(taskData == null) return null;
 
         InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
+        System.out.println("[working]: " + interpolaterNode.id);
         this.transferFromRunningToReady(interpolaterNode);
 
         this.taskUpdater.update(landEntityList)
@@ -183,15 +185,6 @@ public class DistributorManager implements StatusManage {
 //                this.undoneTaskManager.addUndoneTask(taskData);
                 return null;
             });
-//            .thenRun(() -> {
-//                InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
-//                if(interpolaterNode.maxTaskNumber == interpolaterNode.getRestTaskNumber()){
-//                    this.runningQueue.remove(interpolaterNode);
-//                }
-//                if(!this.readyQueue.contains(interpolaterNode)){
-//                    this.readyQueue.add(interpolaterNode);
-//                }
-//            });
         return new DoneTaskStatus(taskData);
     }
 

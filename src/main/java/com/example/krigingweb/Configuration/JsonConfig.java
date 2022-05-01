@@ -44,8 +44,8 @@ public class JsonConfig {
 //        simpleModule.addSerializer(MultiLineString.class, new GeometryJsonConverter.Serializer<>());
 //        simpleModule.addDeserializer(MultiLineString.class, new GeometryJsonConverter.Deserializer<>());
 
-        simpleModule.addSerializer(UUID.class, new UUIDJsonConverter.Serializer());
-        simpleModule.addDeserializer(UUID.class, new UUIDJsonConverter.Deserializer());
+//        simpleModule.addSerializer(UUID.class, new UUIDJsonConverter.Serializer());
+//        simpleModule.addDeserializer(UUID.class, new UUIDJsonConverter.Deserializer());
 
         simpleModule.addSerializer(ZonedDateTime.class, new ZonedDateTimeSerializer());
 

@@ -1,14 +1,14 @@
 distributor:
   enable: true
-  totalTaskGeneratorThreadNumber: 1
+  totalTaskGeneratorThreadNumber: 2
   totalTaskUpdaterThreadNumber: 1
   totalTaskDistributorPostThreadNumber: 8
-  taskStoreMaxCount: 2
+  taskStoreMaxCount: 30
   timeoutMinutes: 5
 
 interpolater:
   enable: true
-  concurrentNumber: 1
+  concurrentNumber: 8
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 30
