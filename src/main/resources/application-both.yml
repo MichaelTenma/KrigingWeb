@@ -1,9 +1,9 @@
 distributor:
   enable: true
-  totalTaskGeneratorThreadNumber: 2
-  totalTaskUpdaterThreadNumber: 1
-  totalTaskDistributorPostThreadNumber: 8
-  taskStoreMaxCount: 30
+  totalTaskGeneratorThreadNumber: 6
+  totalTaskUpdaterThreadNumber: 4
+  totalTaskDistributorPostThreadNumber: 20
+  taskStoreMaxCount: 50
   timeoutMinutes: 5
 
 interpolater:
