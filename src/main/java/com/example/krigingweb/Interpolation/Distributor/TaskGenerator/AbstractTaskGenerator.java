@@ -80,6 +80,7 @@ public abstract class AbstractTaskGenerator implements StatusManage, Runnable {
 
                 Rectangle rectangle = createRectangle(row, col);
                 this.search(rectangle);
+//                log.info("[DISTRIBUTOR]: generate task. row: " + row + ", col: " + col + ". ");
             }
         }
     }

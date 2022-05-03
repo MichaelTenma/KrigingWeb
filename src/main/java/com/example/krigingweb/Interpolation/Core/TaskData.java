@@ -67,8 +67,7 @@ public class TaskData implements MapQueueEntry<UUID>, Serializable {
     public TaskData(List<SamplePointEntity> samplePoints, List<LandEntity> lands) {
         this(
             UUID.randomUUID(), ZonedDateTime.now(),
-                samplePoints, lands,
-            null, null
+            samplePoints, lands, null, null
         );
     }
 

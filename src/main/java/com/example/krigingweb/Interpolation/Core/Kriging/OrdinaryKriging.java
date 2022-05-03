@@ -5,6 +5,8 @@ import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
 import com.example.krigingweb.Interpolation.Core.Regressor;
 import org.apache.commons.math3.linear.*;
 
+import java.util.Arrays;
+
 public class OrdinaryKriging implements Regressor {
     private double[][] u;
     private RealMatrix ZT_invM;
@@ -54,9 +56,7 @@ public class OrdinaryKriging implements Regressor {
         RealMatrix ZMatrix;
         {
             double[] ZCopy = new double[Z.length + 1];
-            for(int i = 0;i < Z.length;i++){
-                ZCopy[i] = Z[i];
-            }
+            System.arraycopy(Z, 0, ZCopy, 0, Z.length);
             ZCopy[ZCopy.length - 1] = 0;
             ZMatrix = MatrixUtils.createRowRealMatrix(ZCopy);
         }
@@ -72,26 +72,25 @@ public class OrdinaryKriging implements Regressor {
         int n = this.u.length;
         int m = predict_u.length;
         double[][] P = new double[n + 1][m];
-        for (double[] uEle : this.u) {
-            for (double[] predict_uEle : predict_u) {
-                this.variogramPredictor.predict(MathUtil.distance(
+
+        for(int k = 0;k < n;k++){
+            double[] uEle = this.u[k];
+            for(int j = 0;j < m;j++){
+                double[] predict_uEle = predict_u[j];
+                double predict_semi = this.variogramPredictor.predict(MathUtil.distance(
                     uEle[0], uEle[1], predict_uEle[0], predict_uEle[1]
                 ));
+                P[k][j] = predict_semi;
             }
         }
         for(int i = 0;i < m;i++) P[n][i] = 1;
         RealMatrix PMatrix = MatrixUtils.createRealMatrix(P);
-//        DoubleMatrix2D PMatrix = DoubleFactory2D.dense.make(P);
         RealMatrix realMatrix = this.ZT_invM.multiply(PMatrix);
-//        DoubleMatrix2D resMatrix = Algebra.DEFAULT.mult(this.ZT_invM, PMatrix);
-//        return resMatrix.toArray()[0];
+//        boolean isNeg = Arrays.stream(realMatrix.getRow(0)).anyMatch(e -> e <= 0);
+//        if(isNeg){
+//            isNeg = true;
+//        }
+
         return realMatrix.getRow(0);
     }
-
-//    @Override
-//    public void free() {
-//        this.u = null;
-//        this.ZT_invM = null;
-//        this.variogramPredictor = null;
-//    }
 }

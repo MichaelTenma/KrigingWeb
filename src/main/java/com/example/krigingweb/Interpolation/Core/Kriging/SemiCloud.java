@@ -64,7 +64,7 @@ public class SemiCloud<V extends VariogramPredictor> {
             tmpS[0][0] = 0;
             tmpS[0][1] = 0;
 
-            index = Math.min(index, tmpS.length / 2) + 1;
+//            index = Math.min(index, tmpS.length / 2) + 1;
 //            index ++;
             this.S = Arrays.copyOfRange(tmpS, 1, index);
         }

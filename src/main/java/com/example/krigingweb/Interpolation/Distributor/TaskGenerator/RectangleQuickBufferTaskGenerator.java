@@ -8,6 +8,7 @@ import com.example.krigingweb.Interpolation.Distributor.Core.Rectangle;
 import com.example.krigingweb.Interpolation.Distributor.TaskStore;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -30,11 +31,11 @@ public class RectangleQuickBufferTaskGenerator extends AbstractTaskGenerator {
         List<LandEntity> landEntityList = this.landService.list(rectangle, InterpolatedStatusEnum.UnStart);
         if(landEntityList != null && landEntityList.size() > 0){
             final int pointsNum = 200;
-            Rectangle bufferRectangle = this.landService.calRectangle(rectangle, 10000, pointsNum);
+            Rectangle bufferRectangle = this.landService.calRectangle(rectangle, pointsNum);
             List<SamplePointEntity> samplePointEntityList = this.samplePointService.list(bufferRectangle);
             if(samplePointEntityList != null && samplePointEntityList.size() > 0){
                 TaskData taskData = new TaskData(samplePointEntityList, landEntityList);
-                this.landService.markPrepareInterpolated(landEntityList);
+//                this.landService.markPrepareInterpolated(landEntityList);
                 this.commit(taskData);
             }
         }

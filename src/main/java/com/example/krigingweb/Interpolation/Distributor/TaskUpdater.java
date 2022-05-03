@@ -16,15 +16,10 @@ class TaskUpdater {
 
     public TaskUpdater(int maxUpdaterNumber, LandService landService) {
         this.landService = landService;
-
         this.updateExecutorService = Executors.newFixedThreadPool(
             maxUpdaterNumber,
             new CustomizableThreadFactory("distributor-taskUpdater-")
         );
-//        this.updateExecutorService = new ThreadPoolExecutor(
-//            maxUpdaterNumber, maxUpdaterNumber, 0L, TimeUnit.MILLISECONDS,
-//            new LinkedBlockingQueue<>(), new CustomizableThreadFactory("distributor-taskUpdater-")
-//        );
     }
 
     public CompletableFuture<Void> update(List<LandEntity> landEntityList){
@@ -36,7 +31,7 @@ class TaskUpdater {
                     break;/* 正常情况执行一次即退出 */
                 } catch (Throwable e) {
                     e.printStackTrace();
-                    Thread.yield();
+                    Thread.yield();/* 给数据库死锁恢复一些时间 */
                 }
             }
             if(i == 5){

@@ -21,16 +21,13 @@ import java.util.UUID;
 public class LandService {
     private final JdbcTemplate jdbcTemplate;
     private final LandRowMapper landRowMapper;
-    private final SamplePointRowMapper samplePointRowMapper;
 
     @Autowired
     public LandService(
-            JdbcTemplate jdbcTemplate,
-            LandRowMapper landRowMapper, SamplePointRowMapper samplePointRowMapper
+        JdbcTemplate jdbcTemplate, LandRowMapper landRowMapper
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.landRowMapper = landRowMapper;
-        this.samplePointRowMapper = samplePointRowMapper;
     }
 
     public List<LandEntity> list(Geometry buffer){
@@ -56,7 +53,8 @@ public class LandService {
                         "where ST_Intersects(geom, ST_GeomFromText('%s', %d)) " +
                         "and interpolated_status = '%s';";
         sql = String.format(sql, rectangle, GeoUtil.srid, interpolatedStatusEnum);
-        return this.jdbcTemplate.query(sql, this.landRowMapper);
+        List<LandEntity> landEntityList = this.jdbcTemplate.query(sql, this.landRowMapper);
+        return landEntityList;
     }
 
     public void markPrepareInterpolated(List<LandEntity> landEntityList){
@@ -129,7 +127,7 @@ public class LandService {
         return this.jdbcTemplate.queryForObject(sql, (rs, rowNum) -> rs.getInt("num"));
     }
 
-    public Rectangle calRectangle(Rectangle rectangle, double distance, int pointsNum){
+    public Rectangle calRectangle(Rectangle rectangle, int pointsNum){
         /* 先判断rectangle内有没有足够的点 */
         Integer num = this.countPoints(rectangle, SoilNutrientEnum.K);
         if(num >= pointsNum) return rectangle.bufferFromBorder(2000);/* 在边框外加2km，尽力确保内插 */

@@ -35,10 +35,10 @@ public class Rectangle {
 
     public Rectangle bufferFromBorder(double distance){
         return new Rectangle(
-                this.left - distance,
-                this.right + distance,
-                this.top + distance,
-                this.bottom - distance
+            this.left - distance,
+            this.right + distance,
+            this.top + distance,
+            this.bottom - distance
         );
     }
 
