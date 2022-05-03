@@ -25,14 +25,16 @@ public class SamplePointService {
 
     public List<SamplePointEntity> list(){
         String sql = "" +
-                "select *, ST_AsText(geom) as point from sample_points " +
+                "select point_id, geom::bytea as geom, time, smc, dmc, xmc, " +
+                "ymc, cmc, ph, oc, n, p, k, distance from sample_points " +
                 "where distance <= 5000 and xmc = '恩平市' order by random();";
         return this.jdbcTemplate.query(sql, new SamplePointRowMapper());
     }
 
     public List<SamplePointEntity> list(Rectangle rectangle){
         String sql =
-                "select *, ST_AsText(geom) as point from sample_points \n" +
+                "select point_id, geom::bytea as geom, time, smc, dmc, xmc, " +
+                "ymc, cmc, ph, oc, n, p, k, distance from sample_points \n" +
                 "where distance <= %f \n" +
                 "and ST_Intersects(geom, ST_geomFromText('%s', %d));";
         sql = String.format(sql, GeoUtil.samplePointMaxDistance, rectangle, GeoUtil.srid);

@@ -32,7 +32,7 @@ public class LandService {
 
     public List<LandEntity> list(Geometry buffer){
         String sql =
-            "select *, ST_AsText(geom) as multiPolygon from 耕地地力评价单元图 " +
+            "select land_id, geom::bytea from 耕地地力评价单元图 " +
             "where ST_Intersects(geom, ST_GeomFromText('%s'));";
         sql = String.format(sql, buffer);
         return this.jdbcTemplate.query(sql, this.landRowMapper);
@@ -40,7 +40,7 @@ public class LandService {
 
     public List<LandEntity> list(Geometry buffer, InterpolatedStatusEnum interpolatedStatusEnum){
         String sql =
-                "select *, ST_AsText(geom) as multiPolygon from 耕地地力评价单元图 " +
+                "select land_id, geom::bytea from 耕地地力评价单元图 " +
                 "where ST_Intersects(geom, ST_GeomFromText('%s', %d)) " +
                 "and interpolated_status = '%s';";
         sql = String.format(sql, buffer, GeoUtil.srid, interpolatedStatusEnum);
@@ -49,7 +49,7 @@ public class LandService {
 
     public List<LandEntity> list(Rectangle rectangle, InterpolatedStatusEnum interpolatedStatusEnum){
         String sql =
-                "select *, ST_AsText(geom) as multiPolygon from 耕地地力评价单元图 " +
+                "select land_id, geom::bytea from 耕地地力评价单元图 " +
                         "where ST_Intersects(geom, ST_GeomFromText('%s', %d)) " +
                         "and interpolated_status = '%s';";
         sql = String.format(sql, rectangle, GeoUtil.srid, interpolatedStatusEnum);
