@@ -10,6 +10,7 @@ import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.AbstractTaskGenerator;
 import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.RectangleQuickBufferTaskGenerator;
+import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.TaskGenerator;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 public class DistributorManager implements StatusManage {
 
-    private final AbstractTaskGenerator taskGenerator;
+    private final TaskGenerator taskGenerator;
     private final TaskStore taskStore;
     private final InterpolaterStore interpolaterStore;
     private final UndoneTaskManager undoneTaskManager;
@@ -58,13 +59,13 @@ public class DistributorManager implements StatusManage {
             landService, samplePointService
         );
 
-        ExecutorService taskGeneratorExecutorService = Executors.newFixedThreadPool(
-            totalTaskGeneratorThreadNumber,
-            new CustomizableThreadFactory("distributor-taskGenerator-")
-        );
-        for(int i = 0;i < totalTaskGeneratorThreadNumber;i++){
-            taskGeneratorExecutorService.execute(this.taskGenerator);
-        }
+//        ExecutorService taskGeneratorExecutorService = Executors.newFixedThreadPool(
+//            totalTaskGeneratorThreadNumber,
+//            new CustomizableThreadFactory("distributor-taskGenerator-")
+//        );
+//        for(int i = 0;i < totalTaskGeneratorThreadNumber;i++){
+//            taskGeneratorExecutorService.execute(this.taskGenerator);
+//        }
 
         this.distributeExecutorService = Executors.newFixedThreadPool(
             totalTaskDistributorPostThreadNumber, new CustomizableThreadFactory("distributor-post-")
@@ -95,6 +96,7 @@ public class DistributorManager implements StatusManage {
         /* 待完成任务存储器 */
         this.undoneTaskManager.addUndoneTask(taskData);
         /* 发出任务 */
+        interpolaterNode.decrementRestTaskNumber();
         this.distributeExecutorService.submit(
             () -> {
                 try{
@@ -114,9 +116,9 @@ public class DistributorManager implements StatusManage {
             if(interpolaterNode == null) break;
             if(!this.interpolaterStore.hasInterpolater(interpolaterNode.id)) continue;
 
-            while(!this.taskStore.isEmpty() && interpolaterNode.hasTask()){
+            while(!this.taskStore.isEmpty() && interpolaterNode.couldAddTask()){
                 TaskData taskData = this.taskStore.requestTask();
-                if(taskData != null)this.runTask(interpolaterNode, taskData);
+                if(taskData != null) this.runTask(interpolaterNode, taskData);
             }
             this.transferFromReadyToRunning(interpolaterNode);
         }

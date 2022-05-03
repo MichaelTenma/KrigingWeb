@@ -153,7 +153,7 @@ public class LandService {
                 landEntity.getK(),
                 landEntity.getOC(),
                 landEntity.getPH(),
-                InterpolatedStatusEnum.Done.toString(),
+                InterpolatedStatusEnum.Done,
                 landEntity.getLandId()
             ));
         });

@@ -3,7 +3,7 @@ distributor:
   totalTaskGeneratorThreadNumber: 1
   totalTaskUpdaterThreadNumber: 1
   totalTaskDistributorPostThreadNumber: 1
-  taskStoreMaxCount: 10
+  taskStoreMaxCount: 20
   timeoutMinutes: 5
 
 interpolater:

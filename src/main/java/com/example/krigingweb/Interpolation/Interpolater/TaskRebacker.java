@@ -1,6 +1,7 @@
 package com.example.krigingweb.Interpolation.Interpolater;
 
 import com.example.krigingweb.Interpolation.Basic.HttpUtil;
+import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
 import com.example.krigingweb.Request.DoneTaskRequest;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;

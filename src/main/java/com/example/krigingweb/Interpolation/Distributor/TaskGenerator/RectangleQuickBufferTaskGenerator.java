@@ -8,11 +8,9 @@ import com.example.krigingweb.Interpolation.Distributor.Core.Rectangle;
 import com.example.krigingweb.Interpolation.Distributor.TaskStore;
 import com.example.krigingweb.Service.LandService;
 import com.example.krigingweb.Service.SamplePointService;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.List;
 
-public class RectangleQuickBufferTaskGenerator extends AbstractTaskGenerator {
+public class RectangleQuickBufferTaskGenerator extends TaskGenerator {
     private final LandService landService;
     private final SamplePointService samplePointService;
 

@@ -29,18 +29,13 @@ public class InterpolaterNode implements MapQueueEntry<UUID> {
         this.restTaskNumber.incrementAndGet();
     }
 
+    public int decrementRestTaskNumber(){
+        return this.restTaskNumber.getAndDecrement();
+    }
+
     public void addTask(TaskData taskData, RestTemplate restTemplate){
-        this.restTaskNumber.getAndDecrement();
         HttpEntity<TaskData> httpEntity = new HttpEntity<>(taskData, HttpUtil.jsonHeaders);
         restTemplate.postForEntity(url, httpEntity, String.class);
-
-//        HttpHeaders httpHeaders = new HttpHeaders();
-//        httpHeaders.setContentType(KryoHttpMessageConverter.KRYO);
-//        HttpEntity<TaskData> httpEntity = new HttpEntity<>(taskData, httpHeaders);
-//        restTemplate.postForEntity(url, httpEntity, String.class);
-
-//        HttpEntity<byte[]> httpEntity = new HttpEntity<>(SerializationUtils.serialize(taskData));
-//        restTemplate.exchange(url, HttpMethod.POST, httpEntity, String.class);
     }
 
     public boolean isFullTask(){
@@ -51,8 +46,13 @@ public class InterpolaterNode implements MapQueueEntry<UUID> {
         return this.restTaskNumber.get() >= this.maxTaskNumber;
     }
 
+    public boolean couldAddTask(){
+        return !this.isFullTask();
+    }
+
     public boolean hasTask(){
-        return this.restTaskNumber.get() > 0;
+        int num = this.restTaskNumber.get();
+        return num >= 0 && num < this.restTaskNumber.get();
     }
 
     public void heartBeat(){
