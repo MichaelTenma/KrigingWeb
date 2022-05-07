@@ -43,4 +43,9 @@ public class InterpolaterController {
     public ResponseEntity<String> showID(){
         return new ResponseEntity<>(this.interpolaterManager.interpolaterID.toString(), HttpStatus.OK);
     }
+
+    @GetMapping("/sumError")
+    public ResponseEntity<String> sumError(){
+        return new ResponseEntity<>(this.interpolaterManager.sumError(), HttpStatus.OK);
+    }
 }

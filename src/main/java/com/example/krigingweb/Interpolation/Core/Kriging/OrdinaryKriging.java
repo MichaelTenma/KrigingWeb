@@ -19,6 +19,7 @@ public class OrdinaryKriging implements Regressor {
         SemiCloud<VariogramPredictor> semiCloud = new SemiCloud<>(lag, maxLag, u, Z);
         double[] predictSemiMatrix = semiCloud.fit(variogramPredictor);
 
+//        System.out.println(semiCloud.toString() + variogramPredictor);
         double[][] M = new double[n + 1][n + 1];
         for(int k = 0;k < n - 1;k++){
             for(int j = k + 1;j < n;j++){

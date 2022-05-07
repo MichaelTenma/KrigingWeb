@@ -3,7 +3,7 @@ distributor:
   totalTaskGeneratorThreadNumber: 1
   totalTaskUpdaterThreadNumber: 1
   totalTaskDistributorPostThreadNumber: 1
-  taskStoreMaxCount: 20
+  taskStoreMaxCount: 10
   timeoutMinutes: 5
 
 interpolater:
@@ -12,6 +12,7 @@ interpolater:
   distributorURL: http://localhost:${server.port}
   callbackHttpEnum: http
   cellSize: 30
+  taskFactor: 1.0
 
 spring:
   datasource:

@@ -35,7 +35,7 @@ class InterpolaterStore {
     public InterpolaterNode working(UUID interpolaterID){
         InterpolaterNode interpolaterNode = this.interpolaterNodeMap.get(interpolaterID);
         if(interpolaterNode != null){
-            interpolaterNode.doneTask();
+            interpolaterNode.incrementRestTaskNumber();
         }
         return interpolaterNode;
     }

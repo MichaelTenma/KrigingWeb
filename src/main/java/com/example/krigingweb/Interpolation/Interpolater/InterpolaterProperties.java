@@ -26,6 +26,9 @@ public class InterpolaterProperties {
     @Value("${interpolater.concurrentNumber}")
     private int concurrentNumber = 1;
 
+    @Value("${interpolater.taskFactor}")
+    private double taskFactor = 1;
+
     @Value("${interpolater.cellSize}")
     private double cellSize = 300;
 

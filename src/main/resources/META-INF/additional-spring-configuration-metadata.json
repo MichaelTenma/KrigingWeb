@@ -54,5 +54,10 @@
       "name": "distributor.taskStoreMaxCount",
       "type": "java.lang.String",
       "description": "任务存储器最大缓冲任务数。"
+    },
+    {
+      "name": "interpolater.taskFactor",
+      "type": "java.lang.Double",
+      "description": "插值指标的任务调节因子。"
     }
   ] }

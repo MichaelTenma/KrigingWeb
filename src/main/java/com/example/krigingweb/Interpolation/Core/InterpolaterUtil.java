@@ -4,9 +4,13 @@ import com.example.krigingweb.Entity.LandEntity;
 import com.example.krigingweb.Entity.NutrientFilter;
 import com.example.krigingweb.Entity.SamplePointEntity;
 import com.example.krigingweb.Interpolation.Core.Enum.SoilNutrientEnum;
+import com.example.krigingweb.Interpolation.Core.Kriging.SemiCloud;
+import com.example.krigingweb.Interpolation.Core.Kriging.Variogram.SphericalVariogram;
+import com.example.krigingweb.Interpolation.Core.Kriging.VariogramPredictor;
 import com.example.krigingweb.Interpolation.Core.Util.GeoUtil;
 import com.example.krigingweb.Interpolation.Core.Kriging.OrdinaryKriging;
 import com.example.krigingweb.Interpolation.Core.Util.MathUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -20,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class InterpolaterUtil {
     public static CompletableFuture<List<LandEntity>> interpolate(
         TaskData taskData, double cellSize, double lag, double maxLag,
@@ -196,6 +201,13 @@ public class InterpolaterUtil {
             SamplePointEntity samplePointEntity = filterSamplePointEntityList.get(k);
             test_Z[k - train_n] = (double) getSoilNutrientMethod.invoke(samplePointEntity);
         }
+
+//        {/* 测试用 */
+//            SphericalVariogram sphericalVariogram = new SphericalVariogram();
+//            SemiCloud<VariogramPredictor> semiCloud = new SemiCloud<>(lag, maxLag, train_u, train_Z);
+//            semiCloud.fit(sphericalVariogram);
+//            log.info(soilNutrientEnum + ";" + semiCloud.toString() + sphericalVariogram);
+//        }
 
         OrdinaryKriging ordinaryKriging = new OrdinaryKriging(lag, maxLag, train_u, train_Z);
         double[] predict_test_Z = ordinaryKriging.predict(test_u);

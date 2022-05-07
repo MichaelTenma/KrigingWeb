@@ -25,12 +25,11 @@ public class InterpolaterNode implements MapQueueEntry<UUID> {
         this.url = url;
     }
 
-    public void doneTask(){
+    public void incrementRestTaskNumber(){
         this.restTaskNumber.incrementAndGet();
     }
-
-    public int decrementRestTaskNumber(){
-        return this.restTaskNumber.getAndDecrement();
+    public void decrementRestTaskNumber(){
+        this.restTaskNumber.getAndDecrement();
     }
 
     public void addTask(TaskData taskData, RestTemplate restTemplate){

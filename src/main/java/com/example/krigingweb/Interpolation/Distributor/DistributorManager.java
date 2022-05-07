@@ -8,7 +8,6 @@ import com.example.krigingweb.Interpolation.Core.MapQueue;
 import com.example.krigingweb.Interpolation.Core.TaskData;
 import com.example.krigingweb.Interpolation.Distributor.Core.InterpolaterNode;
 import com.example.krigingweb.Interpolation.Distributor.Response.DoneTaskStatus;
-import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.AbstractTaskGenerator;
 import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.RectangleQuickBufferTaskGenerator;
 import com.example.krigingweb.Interpolation.Distributor.TaskGenerator.TaskGenerator;
 import com.example.krigingweb.Service.LandService;
@@ -129,13 +128,13 @@ public class DistributorManager implements StatusManage {
         taskData.belongInterpolaterID = null;
 
         if(interpolaterNode == null) return;
-        interpolaterNode.doneTask();
+        interpolaterNode.incrementRestTaskNumber();
         System.out.println("[working]: " + interpolaterNode.id);
 
         this.transferFromReadyToRunning(interpolaterNode);
         if(!taskData.couldBeDistributed()) return;
 
-        this.taskStore.timeoutTask(taskData);
+        this.taskStore.retryTask(taskData);
     }
 
     private void transferFromReadyToRunning(InterpolaterNode interpolaterNode){

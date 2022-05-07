@@ -149,8 +149,10 @@ public class SemiCloud<V extends VariogramPredictor> {
         }
         distanceString.setCharAt(distanceString.length()-1,']');
         semiString.setCharAt(semiString.length()-1,']');
-        distanceString.append(";\n");
-        semiString.append(";\n");
+//        distanceString.append(";\n");
+//        semiString.append(";\n");
+        distanceString.append(";");
+        semiString.append(";");
         return distanceString.toString() + semiString;
     }
 }

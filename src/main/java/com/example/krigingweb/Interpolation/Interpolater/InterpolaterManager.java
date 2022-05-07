@@ -23,7 +23,7 @@ public class InterpolaterManager {
 
     private final RestTemplate restTemplate;
 
-    private final AtomicInteger limitExceptionCount = new AtomicInteger(5);
+//    private final AtomicInteger limitExceptionCount = new AtomicInteger(5);
 
     private final InterpolaterProperties interpolaterProperties;
 
@@ -41,18 +41,19 @@ public class InterpolaterManager {
             interpolaterProperties.getDistributorURL(), interpolaterID, this.restTemplate
         );
 
-        TaskDataInterpolateException.Handler taskDataInterpolateExceptionHandler = (TaskData taskData) -> {
-            if(this.limitExceptionCount.decrementAndGet() >= 0){
-                this.addTask(taskData);
-            }else{
-                /* 不主动瘫痪结点 */
-//                this.error();
-            }
-        };
+//        TaskDataInterpolateException.Handler taskDataInterpolateExceptionHandler = (TaskData taskData) -> {
+//            if(taskData.)
+//            if(this.limitExceptionCount.decrementAndGet() >= 0){
+//                this.addTask(taskData);
+//            }else{
+//                /* 不主动瘫痪结点 */
+////                this.error();
+//            }
+//        };
 
         this.taskInterpolater = new TaskInterpolater(
             this.taskRebacker, this.interpolaterProperties.getCellSize(),
-            interpolaterProperties.getConcurrentNumber(), taskDataInterpolateExceptionHandler
+            interpolaterProperties.getConcurrentNumber(), null
         );
         this.register();
     }
@@ -75,7 +76,9 @@ public class InterpolaterManager {
                 this.interpolaterID, "/interpolater/addTask",
                 this.interpolaterProperties.getPort(),
                 this.interpolaterProperties.getCallbackHttpEnum(),
-                this.interpolaterProperties.getConcurrentNumber()
+                (int)Math.ceil(
+                    this.interpolaterProperties.getConcurrentNumber() * this.interpolaterProperties.getTaskFactor()
+                )
             );
             HttpEntity<RegisterRequest> httpEntity = new HttpEntity<>(registerRequest, HttpUtil.jsonHeaders);
 
@@ -108,5 +111,9 @@ public class InterpolaterManager {
 
         /* 瘫痪当前结点 */
         System.exit(-1);
+    }
+
+    public String sumError(){
+        return this.taskRebacker.sumError();
     }
 }

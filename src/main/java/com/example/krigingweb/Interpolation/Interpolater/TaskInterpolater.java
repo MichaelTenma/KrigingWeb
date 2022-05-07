@@ -39,7 +39,9 @@ class TaskInterpolater {
             CompletableFuture.runAsync(() -> {
                 this.interpolate(taskData).exceptionally(throwable -> {
                     throwable.printStackTrace();
-                    this.taskDataInterpolateExceptionHandler.handle(taskData);
+                    if(this.taskDataInterpolateExceptionHandler != null){
+                        this.taskDataInterpolateExceptionHandler.handle(taskData);
+                    }
                     return null;
                 });
             }, this.taskScheduleExecutorService);

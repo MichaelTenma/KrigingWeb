@@ -38,7 +38,7 @@ public class TaskStore {
         this.data.add(taskData);
     }
 
-    public void timeoutTask(TaskData taskData){
+    public void retryTask(TaskData taskData){
         this.exceptionQueue.add(taskData);
     }
 
