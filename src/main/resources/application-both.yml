@@ -5,6 +5,7 @@ distributor:
   totalTaskDistributorPostThreadNumber: 1
   taskStoreMaxCount: 10
   timeoutMinutes: 5
+  filePath: ${logging.file.path}/data.binary
 
 interpolater:
   enable: true

@@ -40,7 +40,8 @@ public class DistributorConfig {
         int taskStoreMaxCount = this.distributorProperties.getTaskStoreMaxCount();
         return new DistributorManager(
             totalTaskGeneratorThreadNumber, totalTaskUpdaterThreadNumber, totalTaskDistributorPostThreadNumber,
-            timeoutMinutes, taskStoreMaxCount, this.landService, this.samplePointService, this.restTemplate
+            timeoutMinutes, taskStoreMaxCount, this.distributorProperties.getFilePath(),
+            this.landService, this.samplePointService, this.restTemplate
         );
     }
 

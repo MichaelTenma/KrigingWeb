@@ -1,16 +1,17 @@
 distributor:
   enable: true
-  totalTaskGeneratorThreadNumber: 2
-  totalTaskUpdaterThreadNumber: 2
-  totalTaskDistributorPostThreadNumber: 8
-  taskStoreMaxCount: 30
+  totalTaskGeneratorThreadNumber: 10
+  totalTaskUpdaterThreadNumber: 1
+  totalTaskDistributorPostThreadNumber: 16
+  taskStoreMaxCount: 50
   timeoutMinutes: 5
+  filePath: ${logging.file.path}/data.binary
 
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ctpf2
     username: postgres
-    password: w.w1w+
+    password: 123456
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

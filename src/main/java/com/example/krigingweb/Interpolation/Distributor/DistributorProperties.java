@@ -28,6 +28,9 @@ public class DistributorProperties {
     @Value(value = "${distributor.taskStoreMaxCount}")
     private int taskStoreMaxCount = 20;
 
+    @Value(value = "${distributor.filePath}")
+    private String filePath;
+
     @Autowired
     public DistributorProperties(){}
 }

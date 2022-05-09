@@ -46,9 +46,8 @@ public class DistributorManager implements StatusManage {
 
     public DistributorManager(
         int totalTaskGeneratorThreadNumber, int totalTaskUpdaterThreadNumber,
-        int totalTaskDistributorPostThreadNumber, long timeoutMinutes, int taskStoreMaxCount,
-        LandService landService, SamplePointService samplePointService,
-        RestTemplate restTemplate
+        int totalTaskDistributorPostThreadNumber, long timeoutMinutes, int taskStoreMaxCount, String filePath,
+        LandService landService, SamplePointService samplePointService, RestTemplate restTemplate
     ) {
         this.timeoutMinutes = timeoutMinutes;
         this.restTemplate = restTemplate;
@@ -72,7 +71,7 @@ public class DistributorManager implements StatusManage {
 
         this.interpolaterStore = new InterpolaterStore();
         this.undoneTaskManager = new UndoneTaskManager();
-        this.taskUpdater = new TaskUpdater(totalTaskUpdaterThreadNumber, landService);
+        this.taskUpdater = new TaskUpdater(totalTaskUpdaterThreadNumber, landService, filePath);
     }
 
     public void heartBeat(UUID interpolaterID){
@@ -129,7 +128,7 @@ public class DistributorManager implements StatusManage {
 
         if(interpolaterNode == null) return;
         interpolaterNode.incrementRestTaskNumber();
-        System.out.println("[working]: " + interpolaterNode.id);
+//        System.out.println("[working]: " + interpolaterNode.id);
 
         this.transferFromReadyToRunning(interpolaterNode);
         if(!taskData.couldBeDistributed()) return;
@@ -173,20 +172,27 @@ public class DistributorManager implements StatusManage {
         if(taskData == null) return null;
 
         InterpolaterNode interpolaterNode = this.interpolaterStore.working(taskData.belongInterpolaterID);
-        System.out.println("[working]: " + interpolaterNode.id);
+//        System.out.println("[working]: " + interpolaterNode.id);
         this.transferFromRunningToReady(interpolaterNode);
 
-        this.taskUpdater.update(landEntityList)
-            .thenRun(() -> {
-                log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
-            })
-            .exceptionally(throwable -> {
-                /* 放弃taskData的更新 */
-                log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
-//                this.undoneTaskManager.addUndoneTask(taskData);
-                return null;
-            });
-        return new DoneTaskStatus(taskData);
+//        this.taskUpdater.update(landEntityList)
+//            .thenRun(() -> {
+//                log.info("[DONE TASK]: " + new DoneTaskStatus(taskData));
+//            })
+//            .exceptionally(throwable -> {
+//                /* 放弃taskData的更新 */
+//                this.taskUpdater.close();
+//                log.error("[DISTRIBUTOR]: taskID: " + taskID + "更新失败！");
+////                this.undoneTaskManager.addUndoneTask(taskData);
+//                return null;
+//            });
+//        return new DoneTaskStatus(taskData);
+        {
+            this.taskUpdater.update(landEntityList);
+            DoneTaskStatus doneTaskStatus = new DoneTaskStatus(taskData);
+            log.info("[DONE TASK]: " + doneTaskStatus);
+            return doneTaskStatus;
+        }
     }
 
     @Override
@@ -196,6 +202,7 @@ public class DistributorManager implements StatusManage {
             statusEnum = StatusEnum.Run;
             statusOpLock.unlock();
             this.taskGenerator.doStart();
+            this.taskUpdater.start();
 
             /* 单线程定时执行 */
             this.daemonExecutorService.scheduleAtFixedRate(() -> {
@@ -235,6 +242,7 @@ public class DistributorManager implements StatusManage {
         statusEnum = StatusEnum.Stop;
         statusOpLock.unlock();
         this.taskGenerator.doStop();
+        this.taskUpdater.close();
     }
 
     public Map<UUID, InterpolaterNode> getInterpolaterNodeMap(){
